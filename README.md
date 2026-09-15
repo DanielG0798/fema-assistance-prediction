@@ -4,7 +4,7 @@ Machine Learning course project (CAI 4105, Fall 2026) predicting outcomes from a
 
 ## Project Goal
 
-Build an end-to-end ML pipeline following the CRISP-DM methodology to understand, prepare, model, and evaluate patterns in FEMA disaster assistance applications for Hurricane Ian applicants in Lee County, Florida.
+Build an end-to-end ML pipeline to understand, prepare, model, and evaluate patterns in FEMA disaster assistance applications for Hurricane Ian applicants in Lee County, Florida.
 
 ## Dataset
 
@@ -58,13 +58,7 @@ Build an end-to-end ML pipeline following the CRISP-DM methodology to understand
    2. `notebooks/preprocessing/`
    3. `notebooks/modeling/`
 
-## Team
-
-- Team Member 1 — *TBD*
-- Team Member 2 — *TBD*
-- Team Member 3 — *TBD*
-
 ## References
 
 - [FEMA OpenFEMA API](https://www.fema.gov/about/openfema/data-sets)
-- CRISP-DM methodology
+
