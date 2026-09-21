@@ -1,0 +1,11 @@
+# Install with:  pip install -r requirements.txt
+# Developed on Python 3.12 with pandas 3.0.5 (pandas 3 needs Python 3.11+).
+pandas>=3.0
+numpy>=2.0
+pyarrow>=15          # reads/writes the cached .parquet data files
+requests>=2.31       # downloads from the OpenFEMA API
+scikit-learn>=1.5
+matplotlib>=3.8
+seaborn>=0.13
+jupyter>=1.0         # run the notebooks
+nbconvert>=7.0       # export notebooks to HTML/PDF for the report

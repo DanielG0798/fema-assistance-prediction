@@ -1,0 +1,17 @@
+# Data files are big and rebuilt by code: `python -m src.data.fetch_fema` then `python -m src.features.prepare`
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Python / Jupyter noise
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
