@@ -18,6 +18,7 @@ CAI 4105 requires that AI tools "may be used with explicit documentation of usag
 | 2026-09-21 | [team member name] | Wrote and ran `notebooks/eda/01_initial_eda.ipynb` (EDA, leakage check, missing-value and quality analysis, preliminary baselines). Looked up FEMA's official column definitions from the OpenFEMA API for `docs/data_dictionary.md`. | [Re-run "Restart & Run All"; check the numbers in the text against the outputs; challenge any conclusion you don't understand.] |
 | 2026-09-21 | [team member name] | Drafted `reports/milestone_1/report_draft.md`. | [Rewrite in the team's own words; confirm every number; fill in team-specific sections.] |
 | 2026-09-27 | [team member name] | Restructured `report_draft.md` for team use (section-owner table, shared ML glossary, owner notes, "ML takeaway" lines in §3, embedded figures) without changing any numbers. Generated `Milestone1_Responsibilities_and_Draft.docx` (responsibilities + draft) for Google Docs. | [Assign owners and deadlines; rewrite each section in own words; confirm the "likely reason it is blank" column in §3.6.] |
+| 2026-09-28 | Mateo | Compared the team plan with the GitHub issues and the codebase. Looked up the $700 payment (FEMA Serious Needs Assistance) and added the citation to §2.5 and the References. | [Mateo: open the FEMA fact sheet and confirm it supports the §2.5 wording; rewrite §2 in own words; set the §2.2 targets.] |
 
 ## What the AI produced vs. what needs human judgment
 

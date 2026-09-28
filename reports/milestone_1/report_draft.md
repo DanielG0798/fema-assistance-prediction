@@ -124,7 +124,7 @@ A tuned, audited model would give FEMA an early, explainable signal at registrat
 - **Scope / generalization:** one storm and one county, so results may not transfer to other disasters.
 - **Label noise:** "not eligible" mixes many reasons (insurance, missing documents, withdrawal, never referred).
 - **Fairness:** age, income, and location can correlate with vulnerable groups, so we will audit error rates by group.
-- **Assumption to verify:** the flat $700 payment appears to be an emergency-needs payment. We infer this from the data and will confirm it in FEMA program documentation. [TEAM: confirm]
+- **The flat $700 payment (confirmed):** the $700 award is FEMA's *Serious Needs Assistance*, a one-time, flexible payment per household for urgent needs such as food, water, and medication, approved soon after registration (FEMA, *Serious Needs Assistance* fact sheet). Because it can be approved early and follows a simple rule, part of what our model learns is this screening step.
 
 ---
 
@@ -393,6 +393,8 @@ Five-fold **stratified cross-validation** on the development set. **Randomized h
 
 ## References
 FEMA. *OpenFEMA Dataset: Individuals and Households Program – Valid Registrations v2.* https://www.fema.gov/openfema-data-page/individuals-and-households-program-valid-registrations-v2
+
+FEMA. *Serious Needs Assistance* (fact sheet). https://www.fema.gov/fact-sheet/serious-needs-assistance-0
 
 ## AI-use disclosure
 Portions of the code, analysis, and this draft were produced with Claude Code (Anthropic) and reviewed by the team. See `docs/AI_USAGE.md` for the full log.
