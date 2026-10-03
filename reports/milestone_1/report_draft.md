@@ -74,10 +74,11 @@ If either is re-run, re-check every number before export.
 
 ## 2. Business Understanding *(2–3 pages · 5 pts)*
 
-> ✏️ **Owner note.** Graders want: a clear problem statement, *measurable* success criteria, the stakeholders, and the risks. The `[TEAM: confirm]` items are yours to decide.
 
 ### 2.1 Problem definition and motivation
-After a major hurricane, tens of thousands of households apply for federal aid within days. In Lee County, applications peaked on September 30, 2022 (15,240 in one day), and 94% had arrived by the end of October (Figure 2.1). Each application passes through referral, documentation checks, sometimes an inspection, and a decision. About half end without an award, for varied reasons: 30% of unsuccessful applicants had insurance, 19% had no eligible damage or needs, 13% did not respond or withdrew, and 35% were never referred to the program (Figure 2.2).
+
+
+After a big hurricaine like Ian back in 2022, tens of thousands of people and households applied for federal aid within days of the disaster. In Lee county, applications peaked September 30th, 2022 (15,240 in one day), and 94% arrived by the end of October (Figure 2.1). Each application goes through a referral, documentation checks, with sometimes an inspection and a decision. Around half of the people end without an award and for various reasons: 30% of those had insurance, 19% had no eligible damage or needs and 13% did not respond or just withdrew from the application, and 35% were never referred to the program (Figure 2.2).
 
 ![Figure 2.1: Applications over time](../figures/applications_over_time.png)
 *Figure 2.1. Daily applications; the peak is Sep 30, 2022.*
@@ -87,44 +88,44 @@ After a major hurricane, tens of thousands of households apply for federal aid w
 
 **The question our model answers:** *Given what we know about an applicant, will FEMA award them IHP aid?*
 
-**Why it matters.** Survivors wait for answers while caseworkers are overloaded. A reliable prediction could help FEMA:
-- (a) route likely-eligible applications to a fast track;
-- (b) flag likely-ineligible applications early, so staff can tell people what is missing (for example, insurance documents);
+**Why it matters.** Applicants wait for answers while caseworkers are overloaded. A reliable prediction could help FEMA:
+- (a) route likely eligible applications to fast track;
+- (b) flag applications that are likely ineligible early, so staff can tell people what is missing (for example, insurance documents);
 - (c) decide where to send inspectors first;
 - (d) plan staffing and budget for the next disaster.
 
 **What it is not.** The model is decision *support*. It must never automatically deny anyone aid. A person makes every final decision.
 
 ### 2.2 Business objectives and success criteria
-| Objective | How we will measure it | Proposed target [TEAM: confirm] |
+| Objective | How we will measure it | Proposed target  |
 |---|---|---|
-| Predict eligibility at registration time (Tier 1) | ROC-AUC and F1 on the held-out test set | Beat the untuned baseline: ROC-AUC ≥ 0.90, F1 ≥ 0.83 |
-| Predict eligibility after inspection (Tier 2) | same | ROC-AUC ≥ 0.94 |
-| Beat naive approaches | Compare to majority-class guessing and logistic regression | A clear win over both (majority-class accuracy is 50.7%; untuned logistic regression reaches AUC 0.84 at Tier 1) |
-| Be fair across groups | Error rates by age band and income band | No group's error rate more than 5 percentage points above the overall rate |
-| Be explainable | Feature-importance and partial-dependence plots a caseworker could read | Top drivers match FEMA's stated eligibility rules |
+| Predict if someone gets aid right when they apply (Tier 1) | ROC-AUC and F1 on the held-out test set | Beat the untuned baseline: ROC-AUC ≥ 0.90, F1 ≥ 0.91 |
+| Predict if someone gets aid after the inspection (Tier 2) | Same as above | ROC-AUC ≥ 0.94 |
+| Do better than the simple approaches | Compare against just guessing the majority class and against logistic regression | Clearly beat both (guessing the majority class gets 50.7% accuracy, and untuned logistic regression reaches an AUC of 0.84 at Tier 1) |
+| Be fair to every group | Error rates for each age band and income band | No group's error rate is more than 5 percentage points above the overall rate |
+| Be explainable | Feature-importance and partial-dependence plots that a caseworker could actually read | The main drivers line up with FEMA's own eligibility rules |
 
-*Note.* These targets come from preliminary, untuned baselines (Section 5.1). They are goals for tuned models, not promises.
+*Note.* These targets come from the first untuned baselines (Section 5.1). They are goals for the tuned models, not promises.
 
 ### 2.3 Stakeholder analysis
 | Stakeholder | Interest | Cost of a wrong prediction |
 |---|---|---|
-| Applicants (survivors) | Fast, fair, understandable decisions | A household wrongly flagged "ineligible" (a **false negative**) could give up on a claim it deserves |
-| FEMA caseworkers and program managers | Throughput, accuracy, defensible decisions | Wasted inspections (**false positives**), or eligible people missed |
-| Lee County emergency management, State of Florida | Recovery speed, resource planning | Misjudged demand |
-| Congress, auditors, taxpayers | Proper use of federal funds | Improper payments or unexplained denials |
-| Equity and legal-aid organizations | No group treated worse | Systematic bias by age, income, or place |
-| Our team / instructor | Sound methodology, honest reporting | n/a |
+| Applicants (survivors) | Quick and fair decisions that they can understand | A household wrongly flagged as "ineligible" (a **false negative**) might just give up on a claim they deserve |
+| FEMA caseworkers and program managers | Getting through applications fast and accurately, with decisions they can defend | Wasted inspections (**false positives**), or eligible people getting missed |
+| Lee County emergency management, State of Florida | Faster recovery and being able to plan their resources | Misjudging how much help is needed |
+| Congress, auditors, taxpayers | Federal money being used properly | Improper payments or denials that nobody can explain |
+| Equity and legal-aid organizations | No group being treated worse than another | Bias against certain ages, income levels, or places |
+| Our team / instructor | A solid method and honest reporting | n/a |
 
 ### 2.4 Expected impact and value proposition
-A tuned, audited model would give FEMA an early, explainable signal at registration, when information is cheapest to act on. Its value is speed and prioritization, not replacing judgment. Because the outcome depends partly on FEMA's own screening rules, the model also works as a *consistency check*: applications where the model strongly disagrees with the outcome deserve a second look.
+A tuned, audited model would give FEMA an explainable signal at registration that also comes in early, when information is cheapest to act on. Its value is speed and prioritization, not replacing judgment. Because the outcome depends partially on FEMA's own screening rules, the model also works as a *consistency check*: applications where the model strongly disagrees with the outcome deserve a second check.
 
 ### 2.5 Risks and assumptions
 - **Selection bias:** only *valid* registrations are in the data, so we can say nothing about invalid applications.
 - **Scope / generalization:** one storm and one county, so results may not transfer to other disasters.
 - **Label noise:** "not eligible" mixes many reasons (insurance, missing documents, withdrawal, never referred).
 - **Fairness:** age, income, and location can correlate with vulnerable groups, so we will audit error rates by group.
-- **The flat $700 payment (confirmed):** the $700 award is FEMA's *Serious Needs Assistance*, a one-time, flexible payment per household for urgent needs such as food, water, and medication, approved soon after registration (FEMA, *Serious Needs Assistance* fact sheet). Because it can be approved early and follows a simple rule, part of what our model learns is this screening step.
+- The flat $700 payment (confirmed): the $700 award is FEMA's *Serious Needs Assistance*, a one time and flexible payment per household for urgent needs: food, water, and medication, approved soon after registration (FEMA, *Serious Needs Assistance* fact sheet). Because it can be approved early and follows a simple rule, part of what our model learns is this screening part.
 
 ---
 
