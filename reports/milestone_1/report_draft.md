@@ -145,25 +145,25 @@ Full analysis: `notebooks/eda/01_initial_eda.ipynb` (exported as `reports/milest
 | Columns with >10% missing | **6** |
 | Best honest single feature | ROC-AUC ≈ **0.70** (vs 1.000 for the leaky `ihpAmount`) |
 
-### 3.1 Dataset description, source, and collection
-- **Source:** FEMA OpenFEMA, *Individuals and Households Program – Valid Registrations (v2)*, a public government dataset drawn from FEMA's National Emergency Management Information System (NEMIS).
-- **Collection method:** downloaded on 2026-09-21 through the public OpenFEMA API (no key needed) with our script `src/data/fetch_fema.py`, filtered to disaster **DR-4673** and county **Lee (County)**. FEMA refreshes the data weekly, so the row count can drift slightly over time.
-- **Size and grain:** 194,482 rows × 100 columns. Applications are dated 2022-09-27 to 2023-01-12. One row is one household's application (the **unit of observation**).
-- **Requirement check:** ✅ ≥ 10 features (26 at Tier 1, 40 at Tier 2) · ✅ ≥ 1,000 rows · ✅ both numeric and categorical variables.
-- **Caveats from FEMA:** raw operational data, "subject to a small percentage of human error"; only valid registrants are included.
+### 3.1 Dataset description and source
 
-**ML takeaway:** the dataset is large enough for a three-way split and k-fold cross-validation without starving any fold, but it covers a single disaster, which limits **generalization**.
+Our data comes from FEMA's *Individuals and Households Program – Valid Registrations (v2)*, a public government dataset drawn from FEMA's National Emergency Management Information System (NEMIS). We pulled it through the public OpenFEMA API using our script `src/data/fetch_fema.py`, filtering it to Hurricane Ian (DR-4673) and to applicants in Lee County.<!-- TODO(Anthony): AI-drafted sentence ("We pulled it through the public OpenFEMA API..."), reword in my own words --> Because FEMA refreshes the data weekly, the row count can drift slightly over time. The size of the data is 194,482 rows by 100 columns, with applications dated 2022-09-27 to 2023-01-12. One row is one household's application, which is our unit of observation. FEMA notes that this is raw operational data with some human error, and that it includes only valid registrations.<!-- TODO(Anthony): AI-drafted sentence ("FEMA notes that this is raw operational data..."), reword in my own words -->
+
+**ML takeaway:** The dataset is large enough for k-fold cross-validation without starving any fold, but because it covers a single disaster, it limits generalization.
 
 ### 3.2 The target variable
-`ihpEligible` is True when the applicant received a housing and/or other-needs award. The classes are balanced: 98,648 eligible (50.7%) and 95,834 not (49.3%) (Figure 3.1).
+
+Our target is `ihpEligible`, which is True when FEMA awarded the household housing and/or other-needs aid. It answers the main question of the project: did this applicant get help?<!-- TODO(Anthony): AI-drafted sentence ("It answers the main question of the project..."), reword in my own words --> The classes are almost even, with 98,648 eligible (50.7%) and 95,834 not eligible (49.3%) (Figure 3.1).
 
 ![Figure 3.1: Target balance](../figures/target_balance.png)
 *Figure 3.1. Class balance of `ihpEligible`.*
 
-**ML takeaway:** because the classes are balanced, plain **accuracy** is meaningful and no resampling (e.g. SMOTE) or class weighting is needed. We still **stratify** every split to keep the ratio fixed.
+<!-- TODO(Anthony): the ML takeaway below is AI-drafted, reword in my own words -->
+**ML takeaway:** Because the two classes are about the same size, plain accuracy is a fair measure and no balancing tricks are needed. We still stratify every split so each one keeps the same 50.7 / 49.3 mix.
 
 ### 3.3 Feature roles and data leakage (our key finding)
-We sorted all 100 columns into roles, recorded in `src/utils/columns.py`, the single source of truth for the whole team:
+
+We sorted all 100 columns into roles, recorded in `src/utils/columns.py`, which is the team's single source of truth:
 
 | Role | Columns | Meaning |
 |---|---|---|
@@ -173,16 +173,16 @@ We sorted all 100 columns into roles, recorded in `src/utils/columns.py`, the si
 | Leakage | 43 | Results of the decision; never used |
 | ID / constant | 15 | Identifiers, or identical on every row |
 
-*(Tier 1 has 27 raw columns but 26 model features: cleaning drops `damagedCity` and replaces `appliedDate` with `daysSinceLandfall`.)*
+Tier 1 has 27 columns, but only 26 features, because `damagedCity` gets dropped and `appliedDate` turns into `daysSinceLandfall`. Tier 2 is Tier 1 with an additional 14 columns, resulting in 40 features total.
 
-**How we tested for leakage.** We scored each column *on its own* with a small model, which is a **univariate leakage test** (Figure 3.2). Outcome columns are near-perfect predictors (`ihpAmount` AUC 1.000, `onaEligible` 0.97, `ineligibleReason` 0.83), while the best honest column reaches only about 0.70.
+We tested for leakage by scoring every column on its own with ROC-AUC, a univariate leakage test (Figure 3.2). Columns that are outcomes of the decision nearly predict the target by themselves: `ihpAmount` scores 1.000, `onaEligible` 0.97, and `ineligibleReason` 0.83. The best honest column only reaches about 0.70. Since no honest column gets close to perfect on its own, a column that scores near 1.000 is almost certainly part of the answer, which makes it leakage.
 
-**A borderline case.** `currentLocation` contains values that are *consequences* of aid ("FEMA-provided unit" is 99% eligible, "new temporary rental" 87%), so we moved it from Tier 1 to Tier 2. This cost only 0.013 AUC and made the model more honest.
+The borderline case is the `currentLocation` variable. It includes things that happen because of aid ("FEMA-provided unit" is 99% eligible), so it was moved from Tier 1 to Tier 2. That cost only 0.013 AUC and made the model more honest.
 
 ![Figure 3.2: Single-feature ROC-AUC (leakage check)](../figures/leakage_auc.png)
 *Figure 3.2. Each column scored alone. Leakage columns cluster near AUC = 1.*
 
-**ML takeaway:** a high score is only meaningful if the features would exist at **prediction time**. The Tier 1 / Tier 2 split turns that rule into two concrete, testable feature sets.
+**ML takeaway:** A score only counts if every feature would exist at the moment you make the prediction. That's why we split the features into two tiers: Tier 1 for predicting at registration, and Tier 2 for predicting after inspection.
 
 ### 3.4 Summary statistics and distributions
 Applicants are mostly older, small households, and homeowners: 57% are 50 or older, most households have one or two people, 65% own the damaged home, and 77% registered online or through the mobile app (Figure 3.3).
