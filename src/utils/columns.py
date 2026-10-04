@@ -27,7 +27,7 @@ ID_OR_CONSTANT = [
 ]
 
 # --- LEAKAGE: results of the aid decision. NEVER use as model inputs. ---------
-# e.g. ihpAmount > 0 is *exactly* the same thing as ihpEligible (AUC = 1.000).
+# e.g. ihpAmount > 0 is *exactly* the same thing as ihpEligible (Cramér's V = 1.00).
 LEAKAGE = [
     "ihpAmount", "haAmount", "onaAmount", "haEligible", "onaEligible", "haStatus", "haMax",
     "ihpReferral", "haReferral", "onaReferral",
@@ -56,7 +56,7 @@ APPLICATION_FEATURES = [
     "grossIncome", "ownRent", "primaryResidence", "residenceType",
     "homeOwnersInsurance", "floodInsurance", "registrationMethod",
     "damagedCity", "damagedZipCode", "censusGeoid",
-    "homeDamage", "autoDamage", "utilitiesOut", "reportedDamage", "selfAssessmentInformation",
+    "homeDamage", "autoDamage", "reportedDamage", "selfAssessmentInformation",
     "emergencyNeeds", "foodNeed", "shelterNeed", "accessFunctionalNeeds",
 ]
 
@@ -71,14 +71,18 @@ INSPECTION_FEATURES = [
     "verifiedOwnership", "verifiedOccupancy", "habitabilityRepairsRequired",
     # Moved out of Tier 1 after a leakage check: this field can be updated after registration and
     # includes post-aid places ("MHU" FEMA Provided Unit = 99% eligible, "R" new rental = 87%).
-    # Dropping it from Tier 1 cost only ~0.013 AUC (0.913 -> 0.900).
     "currentLocation",
 ]
+
+# --- UNDER REVIEW: held out of both tiers until FEMA confirms when the field is populated.
+# Blank rows are 99.9% eligible and follow a distinct award path (see the EDA notebook, Section 5b).
+UNDER_REVIEW = ["utilitiesOut"]
 
 ALL_ROLES = {
     "target": [TARGET],
     "id_or_constant": ID_OR_CONSTANT,
     "leakage": LEAKAGE,
+    "under_review": UNDER_REVIEW,
     "application": APPLICATION_FEATURES,
     "inspection": INSPECTION_FEATURES,
 }
