@@ -149,19 +149,18 @@ Full analysis: `notebooks/eda/01_initial_eda.ipynb` (exported as `reports/milest
 
 ### 3.1 Dataset description and source
 
-Our data comes from FEMA's *Individuals and Households Program – Valid Registrations (v2)*, a public government dataset drawn from FEMA's National Emergency Management Information System (NEMIS). We pulled it through the public OpenFEMA API using our script `src/data/fetch_fema.py`, filtering it to Hurricane Ian (DR-4673) and to applicants in Lee County.<!-- TODO(Anthony): AI-drafted sentence ("We pulled it through the public OpenFEMA API..."), reword in my own words --> Because FEMA refreshes the data weekly, the row count can drift slightly over time. The size of the data is 194,482 rows by 100 columns, with applications dated 2022-09-27 to 2023-01-12. One row is one household's application, which is our unit of observation. FEMA notes that this is raw operational data with some human error, and that it includes only valid registrations.<!-- TODO(Anthony): AI-drafted sentence ("FEMA notes that this is raw operational data..."), reword in my own words -->
+Our data comes from FEMA's *Individuals and Households Program – Valid Registrations (v2)*, a public government dataset drawn from FEMA's National Emergency Management Information System (NEMIS). We downloaded the data from FEMA's public data site using our script `src/data/fetch_fema.py`, keeping it to Hurricane Ian (DR-4673) and to applicants in Lee County. Because FEMA refreshes the data weekly, the row count can drift slightly over time. The size of the data is 194,482 rows by 100 columns, with applications dated 2022-09-27 to 2023-01-12. One row is one household's application, which is our unit of observation. FEMA warns that this is raw data that has human error. It includes only valid registrations.
 
 **ML takeaway:** The dataset is large enough for k-fold cross-validation with plenty of rows in every fold, but because it covers a single disaster, it limits generalization.
 
 ### 3.2 The target variable
 
-Our target is `ihpEligible`, which is True when FEMA awarded the household housing and/or other-needs aid. This is the main thing our project is trying to predict.<!-- TODO(Anthony): AI-drafted wording, reword in my own words --> The classes are almost even, with 98,648 eligible (50.7%) and 95,834 not eligible (49.3%) (Figure 3.1).
+Our target is `ihpEligible`, which is True when FEMA awarded the household housing and/or other-needs aid. Whether or not FEMA gives a household aid, yes or no, is the answer our model tries to predict. The classes are almost even, with 98,648 eligible (50.7%) and 95,834 not eligible (49.3%) (Figure 3.1).
 
 ![Figure 3.1: Target balance](../figures/target_balance.png)
 *Figure 3.1. Class balance of `ihpEligible`.*
 
-<!-- TODO(Anthony): the ML takeaway below is AI-drafted, reword in my own words -->
-**ML takeaway:** Because the two classes are about the same size, plain accuracy is a fair measure and no balancing tricks are needed. We still stratify every split so each one keeps the same 50.7 / 49.3 mix.
+**ML takeaway:** About half got aid and half didn't, as a result, the accuracy is a fair score and no SMOTE is required for this dataset. Each piece of the data we train and test on is stratified, so it keeps that same 50.7 / 49.3 mix.
 
 ### 3.3 Feature roles and data leakage (our key finding)
 
@@ -176,9 +175,9 @@ We sorted all 100 columns into roles, recorded in `src/utils/columns.py`, which 
 | ID / constant | 15 | Identifiers, or identical on every row |
 | Under review | 1 | `utilitiesOut`, held out of both tiers for now |
 
-Tier 1 has 26 columns, but only 25 features, because `damagedCity` gets dropped and `appliedDate` turns into `daysSinceLandfall`. Tier 2 is Tier 1 with an additional 14 columns, resulting in 39 features total. One column, `utilitiesOut`, is held out of both tiers for now. It is blank for only 2.7% of rows, but 99.9% of those rows were approved, which looks like leakage, and we aren't sure when FEMA fills it in.<!-- TODO(Anthony): AI-drafted wording, reword in my own words -->
+Tier 1 has 26 columns, but only 25 features, because `damagedCity` gets dropped and `appliedDate` turns into `daysSinceLandfall`. Tier 2 is Tier 1 with an additional 14 columns, resulting in 39 features total. We're not using `utilitiesOut` yet. It's almost never blank, but when it is, nearly everyone gets approved. That's suspicious and looks like leakage, as it is blank for only 2.7% of rows, but 99.9% of those rows were approved.
 
-We tested for leakage by scoring every column on its own with Cramér's V, a univariate leakage test (Figure 3.2). Cramér's V measures how strongly a column is linked to the target, where 0 means no link and 1 means the column gives the answer away. Columns that are outcomes of the decision are tied closely to the target: `ihpAmount` scores 1.00, `onaEligible` 0.95, and `ineligibleReason` 0.70. The best honest column only reaches about 0.46. Since no honest column gets close to 1 on its own, a column that scores near 1.00 is almost certainly part of the answer, which makes it leakage.<!-- TODO(Anthony): AI-drafted wording, reword in my own words -->
+We checked each column one at a time to see how closely it matches the answer (Figure 3.2). The score is called Cramér's V, where 0 is no match and 1 is a perfect match. Three columns that are results of FEMA's decision score very high: `ihpAmount` 1.00, `onaEligible` 0.95, `ineligibleReason` 0.70. However, the best normal column only gets 0.46, so anything scoring near 1 is leakage.
 
 The borderline case is the `currentLocation` variable. It includes things that happen because of aid ("FEMA-provided unit" is 99% eligible), so it was moved from Tier 1 to Tier 2 to keep the model honest.
 
@@ -233,7 +232,7 @@ Many of these blanks mean something. For example, `foodNeed` is blank for 52% of
 
 ### 3.7 Correlation analysis
 
-No single numeric feature has a strong straight-line relationship with approval. The strongest correlation is only about 0.36 (Figure 3.8). Since no single column is a strong predictor by itself, the signal most likely comes from features working in combination, which we will test in Milestone 2.<!-- TODO(Anthony): AI-drafted wording, reword in my own words --> Some features are near-copies of each other (Figure 3.9): inspection issued vs. inspection completed (1.00), verified home damage vs. flood damage amount (0.97), and reported damage vs. home damage (0.83).
+No single numeric feature has a strong straight-line relationship with approval. The strongest correlation is only about 0.36 (Figure 3.8). Not a single column predicts the answer confidently alone, so the model will probably need several columns working together, which will be tested in Milestone 2. Some features are near-copies of each other (Figure 3.9): inspection issued vs. inspection completed (1.00), verified home damage vs. flood damage amount (0.97), and reported damage vs. home damage (0.83).
 
 ![Figure 3.8: Correlation with target](../figures/correlation_with_target.png)
 *Figure 3.8. Correlation of each numeric feature with the target.*
@@ -269,7 +268,7 @@ No single numeric feature has a strong straight-line relationship with approval.
 | Near-copy features | Multicollinearity for linear models |
 | Approval partly follows FEMA's own rules | A high score doesn't prove the model understands who actually needs help |
 
-**ML takeaway:** None of these stop the project, but each one changes how we build or judge the model. Sections 4 and 5 explain how we deal with them.<!-- TODO(Anthony): AI-drafted wording, reword in my own words -->
+**ML takeaway:** None of these issues bring the project to a halt, but it does affect how we build/score the model. Sections 4 and 5 explain how we deal with them.
 
 ---
 
