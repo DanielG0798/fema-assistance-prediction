@@ -185,25 +185,17 @@ The borderline case is the `currentLocation` variable. It includes things that h
 **ML takeaway:** A score only counts if every feature would exist at the moment you make the prediction. That's why we split the features into two tiers: Tier 1 for predicting at registration, and Tier 2 for predicting after inspection.
 
 ### 3.4 Summary statistics and distributions
-Applicants are mostly older, small households, and homeowners: 57% are 50 or older, most households have one or two people, 65% own the damaged home, and 77% registered online or through the mobile app (Figure 3.3).
 
-- **Skewed numeric features:** damage measures such as `rpfvl` (FEMA-verified real-property loss) are zero for 83% of applicants and extremely **right-skewed** for the rest.
-- **High-cardinality categoricals:** ZIP code (about 560 values) and census block group (about 3,000 values).
+Most applicants were older people in small households who owned their homes and applied online: 57% are 50 or older, most households have one or two people, 65% own their home, and 77% registered online or through the mobile app (Figure 3.3). The damage numbers are skewed. `rpfvl`, the real-property loss FEMA verified, is $0 for about 83% of applicants, and the other 17% are spread out with some very large amounts. ZIP code has high cardinality, with about 560 different values (and about 3,000 census blocks), which is too many to give each one its own column.
 
 ![Figure 3.3: Applicant profile](../figures/applicant_profile.png)
 *Figure 3.3. Age, household size, ownership, and registration method.*
 
-**ML takeaway:** skew calls for a **log transform** plus "has damage" flags. High cardinality rules out naive one-hot encoding, so we use **frequency or target encoding** instead (Section 4.2).
+**ML takeaway:** We log transform the damage columns to shrink the skew and add a yes/no "has damage" flag, and we frequency-encode ZIP codes instead of giving each ZIP its own column.
 
-### 3.5 Relationships with the target (bivariate analysis)
-Eligibility rate by feature (Figure 3.4):
-- **Primary residence** acts almost like a hard rule: non-primary homes are about 0.4% eligible.
-- **Emergency needs reported:** 34% eligible if not reported, 66% if reported.
-- **Homeowners insurance** lowers eligibility (47% vs 55% without), consistent with FEMA covering what insurance does not. Flood insurance barely matters.
-- **Income:** eligibility falls as reported income rises (61% under $15k to 45% above $175k). The "$0" group is the exception and is lowest (42%).
-- **Owner vs renter** makes almost no difference (51% vs 50%).
-- **Inspection (Tier 2):** applicants whose inspection was completed are 73% eligible vs 38% otherwise; unverified occupancy is under 1% eligible.
-- **Geography and timing:** eligibility ranges from 43% to 62% across the 22 largest ZIP codes (Figure 3.5) and shifts with the week of application (Figure 3.6).
+### 3.5 Relationships with the target
+
+Some features change the chance of approval a lot (Figure 3.4). If the home isn't the applicant's primary residence, they are basically never approved (about 0.4%). Reporting emergency needs makes approval more likely (66% vs. 34%). Having homeowners insurance makes it less likely (47% vs. 55%), since FEMA doesn't pay for damage that insurance already covers. Higher income also lowers the odds, from 61% under $15k to 45% above $175k, although the $0-income group is the lowest at 42%. Owning or renting makes almost no difference (51% vs. 50%). At Tier 2, applicants whose inspection was completed were approved 73% of the time versus 38% otherwise, and approval ranges from 43% to 62% across the 22 largest ZIP codes (Figures 3.5 and 3.6).
 
 ![Figure 3.4: Eligibility by feature](../figures/eligibility_by_feature.png)
 *Figure 3.4. Eligibility rate within each category of key features.*
@@ -214,29 +206,31 @@ Eligibility rate by feature (Figure 3.4):
 ![Figure 3.6: Eligibility by week](../figures/eligibility_by_week.png)
 *Figure 3.6. Eligibility by week of application.*
 
-**ML takeaway:** several strong signals are rule-like and non-linear (the income "$0" break, the residence cutoff), which favors **tree-based models**. The income bracket must stay an **unordered category**.
+**ML takeaway:** Several of the strongest signals act like if/then rules instead of smooth trends, like the primary-residence cutoff and the $0-income group, so tree-based models such as decision trees and random forests should fit this data well. Income stays an unordered category, because the $0 group breaks the usual "more income, less aid" pattern.
 
 ### 3.6 Missing values
-Nineteen columns have missing values, eleven of them candidate features (Figure 3.7). Six are more than 10% missing:
 
-| Column | Missing | Likely reason it is blank |
+Nineteen columns have missing values. Eleven of them are candidate features, and six are more than 10% missing (Figure 3.7):
+
+| Column | Missing | Likely reason it's blank |
 |---|---|---|
-| `renterDamageLevel` | 96% | FEMA-determined damage level for *renter* dwellings only |
-| `highWaterLocation` | 88% | Only applies where there was a high-water (flood) mark |
-| `shelterNeed` | 82% | Almost always True when present, so blank ≈ need not reported |
-| `habitabilityRepairsRequired` | 73% | Not filled in for most applicants; *whether* it was filled in is itself a signal [TEAM: confirm cause] |
-| `foodNeed` | 52% | Almost always True when present, so blank ≈ need not reported |
+| `renterDamageLevel` | 96% | Only applies to renters |
+| `highWaterLocation` | 88% | Only applies where there was a flood mark |
+| `shelterNeed` | 82% | Almost always "yes" when filled in, so blank ≈ not reported |
+| `habitabilityRepairsRequired` | 73% | Not filled in for most applicants [TEAM: confirm why] |
+| `foodNeed` | 52% | Almost always "yes" when filled in, so blank ≈ not reported |
 | `selfAssessmentInformation` | 15% | Applicant's own damage rating, left blank by some |
 
-Several of these blanks are **structural** (the question does not apply) or **informative** (a blank means "not reported"), so the data is *not* missing completely at random.
+Many of these blanks mean something. For example, `foodNeed` is blank for 52% of applicants, but when it is filled in it is almost always "yes," so a blank most likely means the applicant just didn't report the need. Other blanks are structural, since `renterDamageLevel` only applies to renters. Because of this, the data is not missing at random.
 
 ![Figure 3.7: Missing values](../figures/missing_values.png)
 *Figure 3.7. Share of missing values per column.*
 
-**ML takeaway:** filling blanks with a plain mean would erase a real signal. We add **missing-value indicator** features and impute inside the pipeline, fit on training data only.
+**ML takeaway:** Filling the blanks with an average would erase what the blank is telling us, so we add a yes/no "was this blank?" column for these features, and fill any remaining gaps inside the pipeline using only the training data.
 
 ### 3.7 Correlation analysis
-No single numeric feature has a strong **linear** relationship with eligibility; the strongest correlation is about 0.36 (Figure 3.8). Several feature pairs are near-duplicates (Figure 3.9): inspection issued vs completed (1.00), real-property loss vs flood-damage amount (0.97), reported damage vs home damage (0.83).
+
+No single numeric feature has a strong straight-line relationship with approval. The strongest correlation is only about 0.36 (Figure 3.8). Even so, the model reaches an AUC of 0.90 when it uses the features together, so the signal comes from features working in combination. Some features are near-copies of each other (Figure 3.9): inspection issued vs. inspection completed (1.00), verified home damage vs. flood damage amount (0.97), and reported damage vs. home damage (0.83).
 
 ![Figure 3.8: Correlation with target](../figures/correlation_with_target.png)
 *Figure 3.8. Correlation of each numeric feature with the target.*
@@ -244,31 +238,33 @@ No single numeric feature has a strong **linear** relationship with eligibility;
 ![Figure 3.9: Correlation matrix](../figures/correlation_matrix.png)
 *Figure 3.9. Feature-to-feature correlations.*
 
-**ML takeaway:** weak individual correlations combined with a strong multi-feature baseline (AUC 0.90) mean the signal comes from **feature interactions**. The near-duplicate pairs are **multicollinearity**: we drop one of each pair for linear models, while trees are largely unaffected.
+**ML takeaway:** The signal comes from features combining, not from any single column. The near-copy pairs are multicollinearity, so we drop one from each pair for linear models like logistic regression, while tree-based models can keep both.
 
 ### 3.8 Data quality assessment
-| Check | Result | Decision |
-|---|---|---|
-| Constant columns | 14 columns have one value on every row (expected: one disaster, one county) | Drop |
-| Duplicates | 407 rows (0.21%) identical on all non-ID columns; probably different households with the same answers | Keep |
-| Location errors | 6,357 rows (3.3%) have a census block outside Lee County (2,707 are `NO_INTERSECT`; most others are neighboring counties); only 17 rows have a non-Florida ZIP | Keep; `NO_INTERSECT` as its own category |
-| Hand-typed city names | Many spellings (e.g. `FT MYERS`, `FT MYERS BCH`) | Drop the city column |
-| Implausible values | A water depth of 960 inches (80 ft) | Cap (outlier treatment) |
-| Dates | Only 2 applications dated before the disaster declaration | Keep |
 
-**ML takeaway:** quality is good overall. Every issue has a specific, documented fix in Section 4.1.
+| Check | What we found | What we do |
+|---|---|---|
+| Constant columns | 14 columns have the same value on every row (one disaster, one county) | Drop them |
+| Duplicates | 407 rows (0.21%) match on every non-ID column, likely different households with the same answers | Keep them |
+| Location errors | 6,357 rows (3.3%) have a census block outside Lee County (2,707 are `NO_INTERSECT`); only 17 have a non-Florida ZIP | Keep them; treat `NO_INTERSECT` as its own category |
+| Hand-typed city names | Many spellings (`FT MYERS`, `FT MYERS BCH`) | Drop the city column |
+| Impossible values | A flood depth of 960 inches (80 feet) | Cap it at a reasonable max |
+| Dates | Only 2 applications dated before the disaster was declared | Keep them |
+
+**ML takeaway:** The data quality is good overall, and every problem has a specific fix that carries into the Data Preparation Plan (Section 4).
 
 ### 3.9 Challenges and limitations
-| Challenge | Why it matters for ML |
+
+| Challenge | Why it matters for the model |
 |---|---|
-| Data leakage | Inflated, meaningless scores if not controlled |
-| One disaster, one county | Limited generalization to other storms |
-| Valid registrants only | Selection bias |
-| Label bundles many denial reasons | Label noise; one "no" can mean very different things |
-| Heavy skew, structural missingness | Requires transforms and missing indicators |
-| High-cardinality geography | Encoding choices can overfit if not done inside CV folds |
-| Near-duplicate features | Multicollinearity for linear models |
-| Outcomes partly follow FEMA rules | A high score is not proof the model understands *need* |
+| Data leakage | Scores look perfect but mean nothing if it isn't controlled |
+| One storm, one county | A model trained here may not work for other disasters (generalization) |
+| Valid registrations only | Selection bias: we can't say anything about applications that never made it in |
+| "Not eligible" covers many reasons | Label noise: one "no" can mean very different things |
+| Heavy skew and meaningful blanks | Needs log transforms and "was this blank?" columns |
+| Too many ZIP codes and census blocks | Encoding them can overfit if it isn't done inside the cross-validation folds |
+| Near-copy features | Multicollinearity for linear models |
+| Approval partly follows FEMA's own rules | A high score doesn't prove the model understands who actually needs help |
 
 ---
 
