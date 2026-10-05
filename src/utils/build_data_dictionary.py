@@ -13,9 +13,9 @@ import re
 import pandas as pd
 import requests
 
-from src.data.fetch_fema import CACHE, REPO_ROOT, DATASET
+from src.data.fetch_fema import COUNTY, DATASET, IAN_DR, REPO_ROOT, _cache_path
 from src.utils.columns import (
-    APPLICATION_FEATURES, ID_OR_CONSTANT, INSPECTION_FEATURES, LEAKAGE, TARGET,
+    APPLICATION_FEATURES, ID_OR_CONSTANT, INSPECTION_FEATURES, LEAKAGE, TARGET, UNDER_REVIEW,
 )
 
 META_URL = "https://www.fema.gov/api/open/v1/OpenFemaDataSetFields"
@@ -41,16 +41,24 @@ NOTES = {
     "shelterNeed": "Blank effectively means 'need not reported'. Keep a missing indicator.",
     "primaryResidence": "Near-rule: non-primary homes are ~0% eligible.",
     "verifiedOccupancy": "Near-rule: unverified occupancy is <1% eligible.",
-    "habitabilityRepairsRequired": "73% blank; part of its signal is whether it was filled in.",
+    "habitabilityRepairsRequired": "Blank for 72.6% of rows. Eligible 37% when blank vs 88% when answered, so whether it was recorded is itself a strong signal; keep a missing indicator.",
     "currentLocation": "**Moved out of Tier 1** after a leakage check: can change after registration and includes post-aid values (FEMA-provided unit 99% eligible, new rental 87%).",
-    "rpfvl": "Zero for 83%; heavy right skew, plan `log1p`.",
-    "ppfvl": "Zero for 81%; heavy right skew, plan `log1p`.",
-    "waterLevel": "Max 960 inches is implausible; plan to cap.",
-    "ihpAmount": "AUC 1.000 on its own: same information as the target.",
+    "rpfvl": "Zero for 83% of rows; heavy right skew, plan `log1p`.",
+    "ppfvl": "Zero for 81% of rows; heavy right skew, plan `log1p`.",
+    "waterLevel": "Zero for 88% of rows; the 960-inch maximum is implausible; plan to cap.",
+    "floodDamage": "Yes for 14% of rows: eligible 94% if yes, 44% if no.",
+    "floodDamageAmount": "Zero for 87% of rows; heavy right skew, plan `log1p`.",
+    "inspnIssued": "Yes for 36% of rows: eligible 73% if yes, 38% if no. Identical to `inspnReturned` (r = 1.00).",
+    "inspnReturned": "Yes for 36% of rows: eligible 73% if yes, 38% if no. Identical to `inspnIssued` (r = 1.00).",
+    "destroyed": "Yes for 1.5% of rows: eligible 99% if yes, 50% if no.",
+    "highWaterLocation": "Blank for 88% of rows. Eligible 45% when blank vs 92% when answered; keep a missing indicator.",
+    "renterDamageLevel": "Blank for 96% of rows. Eligible 49% when blank vs 89% when answered; keep a missing indicator.",
+    "utilitiesOut": "**Moved out of Tier 1** until FEMA confirms when the field is populated. Blank rows (2.7%) are 99.9% eligible and follow a distinct award path (mostly first-week applicants on rental assistance), so the field may be filled in after the decision.",
+    "ihpAmount": "Cramér's V = 1.00 with eligibility: same information as the target.",
     "ineligibleReason": "Only filled in for people who were referred and denied. Blank = never referred.",
     "ihpReferral": "False = never referred, and 0% of those are eligible (a process gate, not a cause).",
-    "onaEligible": "AUC 0.97 on its own.",
-    "onaAmount": "AUC 0.97 on its own.",
+    "onaEligible": "Cramér's V about 0.95 with eligibility (leakage).",
+    "onaAmount": "Cramér's V about 0.95 with eligibility (leakage).",
 }
 
 SECTIONS = [
@@ -58,6 +66,7 @@ SECTIONS = [
     ("Tier 1: Application-time features (known when the person registers)", APPLICATION_FEATURES),
     ("Tier 2: Later-stage features (known only after inspection / verification, or updated after registration)", INSPECTION_FEATURES),
     ("Leakage: results of the aid decision (**never use as model inputs**)", LEAKAGE),
+    ("Under review: held out of both tiers until FEMA confirms timing", UNDER_REVIEW),
     ("Identifiers and constants (no information)", ID_OR_CONSTANT),
 ]
 
@@ -77,7 +86,7 @@ def _describe(info: dict, name: str) -> str:
 
 def main() -> None:
     info = _fetch_fields()
-    df = pd.read_parquet(CACHE)
+    df = pd.read_parquet(_cache_path(IAN_DR, COUNTY))
     miss = (df.isna().mean() * 100).round(1)
     n_app, n_insp = len(APPLICATION_FEATURES), len(INSPECTION_FEATURES)
 
@@ -100,6 +109,7 @@ def main() -> None:
 | Tier 1: application | {n_app} | self-reported at registration |
 | Tier 2: later-stage | {n_insp} | known only after an inspector / verification, or updated after registration |
 | Leakage | {len(LEAKAGE)} | outcomes of the decision; using them would be cheating |
+| Under review | {len(UNDER_REVIEW)} | held out of both tiers until FEMA confirms timing |
 | ID / constant | {len(ID_OR_CONSTANT)} | identifiers, or identical on every row |
 
 Cleaning (`src/features/prepare.py`) also drops `damagedCity` and replaces `appliedDate` with `daysSinceLandfall`, so a model sees **{n_app - 1}** Tier 1 features, or **{n_app - 1 + n_insp}** with Tier 2.
