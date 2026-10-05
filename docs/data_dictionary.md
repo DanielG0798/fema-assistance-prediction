@@ -14,12 +14,13 @@
 | Role | Columns | Meaning |
 |---|---|---|
 | Target | 1 | what we predict |
-| Tier 1: application | 27 | self-reported at registration |
+| Tier 1: application | 26 | self-reported at registration |
 | Tier 2: later-stage | 14 | known only after an inspector / verification, or updated after registration |
 | Leakage | 43 | outcomes of the decision; using them would be cheating |
+| Under review | 1 | held out of both tiers until FEMA confirms timing |
 | ID / constant | 15 | identifiers, or identical on every row |
 
-Cleaning (`src/features/prepare.py`) also drops `damagedCity` and replaces `appliedDate` with `daysSinceLandfall`, so a model sees **26** Tier 1 features, or **40** with Tier 2.
+Cleaning (`src/features/prepare.py`) also drops `damagedCity` and replaces `appliedDate` with `daysSinceLandfall`, so a model sees **25** Tier 1 features, or **39** with Tier 2.
 
 ## Derived column
 
@@ -58,7 +59,6 @@ Cleaning (`src/features/prepare.py`) also drops `damagedCity` and replaces `appl
 | `censusGeoid` | text | 0.0 | Numeric code that uniquely identify all administrative/legal and statistical geographic areas for which the Census Bureau tabulates data. In this instance, the Census GeoID is presented at the Census Block Group level. This is an address-based 12-character code that is the concatenation of fields consisting of the 2-character state FIPS code, the 3-character county FIPS code, the 6-character census tract code, and the 1-character block group code. A value of NO_INTERSECT indicates the address on file did not fall within the defined Census geography. (`NO_INTERSECT` = address did not match a census block). | High-cardinality category (~3,000 values); ~3% are outside Lee County. |
 | `homeDamage` | boolean | 3.9 | Did the applicant report home damage? |  |
 | `autoDamage` | boolean | 0.0 | Did the applicant report damages to automobile(s)? |  |
-| `utilitiesOut` | boolean | 2.7 | Did the applicant report utilities were out of service? |  |
 | `reportedDamage` | boolean | 0.0 | Flag indicating that there was reported damage. |  |
 | `selfAssessmentInformation` | text | 14.8 | Self-assessment information. 1 - I had minor damage but I am able to live in my home.; 2 - I had damage to my home that requires a lot of repairs. I may not be able to live in my home.; 3 - I had damage to my home that requires major repairs. I am not able to live in my home.; 4 - My home was completely destroyed.; 5 - Unknown.; NR - No Response |  |
 | `emergencyNeeds` | boolean | 0.0 | Did the applicant report needs for emergency items? | Strongest Tier 1 signal (34% eligible if No, 66% if Yes). |
@@ -70,30 +70,30 @@ Cleaning (`src/features/prepare.py`) also drops `damagedCity` and replaces `appl
 
 | Column | Type | Missing % | Meaning (FEMA) | Our handling |
 |---|---|---|---|---|
-| `inspnIssued` | boolean | 0.0 | Has a FEMA inspection been issued to determine damage amount? |  |
-| `inspnReturned` | boolean | 0.0 | Has a FEMA issued inspection been performed to determine damage amount? |  |
-| `rpfvl` | decimal(12,2) | 0.0 | FEMA-determined value of disaster-caused damage to real property components, including floors, walls, access roads and bridges, electrical, plumbing, HVAC, etc. Note: IHP does not address land damage. | Zero for 83%; heavy right skew, plan `log1p`. |
-| `ppfvl` | decimal(12,2) | 0.0 | FEMA-determined value of disaster-caused damage to personal property components, including appliances, furniture, etc. Note: IHP does not address land damage. | Zero for 81%; heavy right skew, plan `log1p`. |
-| `floodDamage` | boolean | 0.0 | Was flood damage recorded? |  |
-| `floodDamageAmount` | decimal(12,2) | 0.0 | FEMA-determined amount of damage to real and personal property due to flood damage, in U.S. dollars |  |
-| `waterLevel` | integer | 0.0 | Total depth of water affected the damaged dwelling, in inches | Max 960 inches is implausible; plan to cap. |
-| `highWaterLocation` | text | 88.3 | Location of the high-water mark affected the damaged dwelling. A - Attic; B - Basement; N - Crawlspace; 1 - First Floor; O - Other; S - Over Access Road; R - Over Roof; 2 - Second Floor; 3 - Third Floor |  |
-| `destroyed` | boolean | 0.0 | Indicates if the home was destroyed. The home is marked as destroyed when requiring the replacement of the majority of two or more major structural components such as the collapsing of foundation walls, exterior walls or roof assembly; or only the foundation remains after complete removal of the above grade structure; or flood waters reach the roof inundating the majority of the structures living area; or the home is in imminent threat of collapse because of disaster-caused damages. In addition to these factors, mobile homes and or travel trailers are considered destroyed when the frame is visibly bent or twisted and releveling is not possible. |  |
-| `renterDamageLevel` | text | 96.2 | FEMA-determined level of damage to a dwelling occupied by a renter. 5530 - Moderate Damage; 5531 - Substantial Damage; 5532 - Major Damage; 5533 - Destroyed |  |
+| `inspnIssued` | boolean | 0.0 | Has a FEMA inspection been issued to determine damage amount? | Yes for 36% of rows: eligible 73% if yes, 38% if no. Identical to `inspnReturned` (r = 1.00). |
+| `inspnReturned` | boolean | 0.0 | Has a FEMA issued inspection been performed to determine damage amount? | Yes for 36% of rows: eligible 73% if yes, 38% if no. Identical to `inspnIssued` (r = 1.00). |
+| `rpfvl` | decimal(12,2) | 0.0 | FEMA-determined value of disaster-caused damage to real property components, including floors, walls, access roads and bridges, electrical, plumbing, HVAC, etc. Note: IHP does not address land damage. | Zero for 83% of rows; heavy right skew, plan `log1p`. |
+| `ppfvl` | decimal(12,2) | 0.0 | FEMA-determined value of disaster-caused damage to personal property components, including appliances, furniture, etc. Note: IHP does not address land damage. | Zero for 81% of rows; heavy right skew, plan `log1p`. |
+| `floodDamage` | boolean | 0.0 | Was flood damage recorded? | Yes for 14% of rows: eligible 94% if yes, 44% if no. |
+| `floodDamageAmount` | decimal(12,2) | 0.0 | FEMA-determined amount of damage to real and personal property due to flood damage, in U.S. dollars | Zero for 87% of rows; heavy right skew, plan `log1p`. |
+| `waterLevel` | integer | 0.0 | Total depth of water affected the damaged dwelling, in inches | Zero for 88% of rows; the 960-inch maximum is implausible; plan to cap. |
+| `highWaterLocation` | text | 88.3 | Location of the high-water mark affected the damaged dwelling. A - Attic; B - Basement; N - Crawlspace; 1 - First Floor; O - Other; S - Over Access Road; R - Over Roof; 2 - Second Floor; 3 - Third Floor | Blank for 88% of rows. Eligible 45% when blank vs 92% when answered; keep a missing indicator. |
+| `destroyed` | boolean | 0.0 | Indicates if the home was destroyed. The home is marked as destroyed when requiring the replacement of the majority of two or more major structural components such as the collapsing of foundation walls, exterior walls or roof assembly; or only the foundation remains after complete removal of the above grade structure; or flood waters reach the roof inundating the majority of the structures living area; or the home is in imminent threat of collapse because of disaster-caused damages. In addition to these factors, mobile homes and or travel trailers are considered destroyed when the frame is visibly bent or twisted and releveling is not possible. | Yes for 1.5% of rows: eligible 99% if yes, 50% if no. |
+| `renterDamageLevel` | text | 96.2 | FEMA-determined level of damage to a dwelling occupied by a renter. 5530 - Moderate Damage; 5531 - Substantial Damage; 5532 - Major Damage; 5533 - Destroyed | Blank for 96% of rows. Eligible 49% when blank vs 89% when answered; keep a missing indicator. |
 | `verifiedOwnership` | boolean | 0.0 | Flag indicating that the ownership status is verified. Null means there is no reported value for the field. |  |
 | `verifiedOccupancy` | boolean | 0.0 | Flag indicating that the occupancy level is verified. | Near-rule: unverified occupancy is <1% eligible. |
-| `habitabilityRepairsRequired` | boolean | 72.6 | Are repairs required to make the dwelling habitable? | 73% blank; part of its signal is whether it was filled in. |
+| `habitabilityRepairsRequired` | boolean | 72.6 | Are repairs required to make the dwelling habitable? | Blank for 72.6% of rows. Eligible 37% when blank vs 88% when answered, so whether it was recorded is itself a strong signal; keep a missing indicator. |
 | `currentLocation` | text | 0.0 | Current location type code. C - My Vehicle; CH - Church/House of Worship; D - My Home; E - Place of Employment; F - Family/Friends; H - Hotel/Motel; MHU - FEMA Provided Unit; NH - Homeless; P - Purchased New Home; PRU - New Permanent Rental; R - New Temporary Rental; RVT - RV/Camper; S - Mass Shelter; SR - Secondary Residence; T - Tent; U - Unknown | **Moved out of Tier 1** after a leakage check: can change after registration and includes post-aid values (FEMA-provided unit 99% eligible, new rental 87%). |
 
 ## Leakage: results of the aid decision (**never use as model inputs**)
 
 | Column | Type | Missing % | Meaning (FEMA) | Our handling |
 |---|---|---|---|---|
-| `ihpAmount` | decimal(12,2) | 0.0 | Total financial IHP award for Housing Assistance (HA) and/or Other Needs Assistance (ONA), in U.S. dollars | AUC 1.000 on its own: same information as the target. |
+| `ihpAmount` | decimal(12,2) | 0.0 | Total financial IHP award for Housing Assistance (HA) and/or Other Needs Assistance (ONA), in U.S. dollars | Cramér's V = 1.00 with eligibility: same information as the target. |
 | `haAmount` | decimal(12,2) | 0.0 | Total amount awarded for Housing Assistance under IHP |  |
-| `onaAmount` | decimal(8,2) | 0.0 | Total dollar amount awarded for Other Needs Assistance (ONA) from the Individual and Households Program (IHP) | AUC 0.97 on its own. |
+| `onaAmount` | decimal(8,2) | 0.0 | Total dollar amount awarded for Other Needs Assistance (ONA) from the Individual and Households Program (IHP) | Cramér's V about 0.95 with eligibility (leakage). |
 | `haEligible` | boolean | 0.0 | Was the applicant eligible for the Housing Assistance program? NOTE: Does not include applicants licensed into Direct Housing that did not receive an HA award |  |
-| `onaEligible` | boolean | 0.0 | Was the applicant eligible for the Other Needs Assistance (ONA) program? | AUC 0.97 on its own. |
+| `onaEligible` | boolean | 0.0 | Was the applicant eligible for the Other Needs Assistance (ONA) program? | Cramér's V about 0.95 with eligibility (leakage). |
 | `haStatus` | text | 25.4 | The most recent Housing Assistance decision. Clarifications to values can be found in the codes table. |  |
 | `haMax` | boolean | 0.0 | For disasters declared after August 1, 2017, did the applicant receive the maximum HA grant from FEMA? |  |
 | `ihpReferral` | boolean | 0.0 | IHP referral status NOTE: Does not include applicants referred to TSA only | False = never referred, and 0% of those are eligible (a process gate, not a cause). |
@@ -132,6 +132,12 @@ Cleaning (`src/features/prepare.py`) also drops `damagedCity` and replaces `appl
 | `personalPropertyAmount` | decimal(12,2) | 0.0 | Amount of ONA awarded for Personal Property Assistance in U.S. dollars |  |
 | `unmetNeedRp` | decimal(12,2) | 0.0 | FEMA Total Real Property Verified Loss by an inspector minus FEMA Total Real Property Award if any |  |
 | `unmetNeedPp` | decimal(12,2) | 0.0 | FEMA Total Personal Property Verified Loss by an inspector minus FEMA Total Personal Property Award if any |  |
+
+## Under review: held out of both tiers until FEMA confirms timing
+
+| Column | Type | Missing % | Meaning (FEMA) | Our handling |
+|---|---|---|---|---|
+| `utilitiesOut` | boolean | 2.7 | Did the applicant report utilities were out of service? | **Moved out of Tier 1** until FEMA confirms when the field is populated. Blank rows (2.7%) are 99.9% eligible and follow a distinct award path (mostly first-week applicants on rental assistance), so the field may be filled in after the decision. |
 
 ## Identifiers and constants (no information)
 
