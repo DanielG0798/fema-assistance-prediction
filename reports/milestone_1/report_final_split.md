@@ -113,19 +113,19 @@ About half got aid and half didn't, so the accuracy is a fair score and no SMOTE
 
 **AI-assisted analysis**
 
-`ihpEligible` is True when FEMA awarded the household housing and/or other-needs aid. Stratifying means every split is cut so it keeps the same share of each class.
+`ihpEligible` is True when FEMA gave the household money for housing or other needs. Stratifying means each piece of the data keeps the same mix of yes and no.
 
 ### 3.3 Feature roles and data leakage
 
-We sorted all 100 columns into roles, recorded in `src/utils/columns.py`, which is the team's single source of truth:
+We sorted all 100 columns into roles. They are listed in `src/utils/columns.py`, which is the one file the whole team uses for this:
 
 | Role | Columns | Meaning |
 |---|---|---|
 | Target | 1 | `ihpEligible` |
-| Tier 1: application-time | 26 | Self-reported at registration |
-| Tier 2: later-stage | 14 | Learned after inspection or verification |
-| Leakage | 43 | Results of the decision; never used |
-| ID / constant | 15 | Identifiers, or identical on every row |
+| Tier 1: application-time | 26 | What the applicant reports when signing up |
+| Tier 2: later-stage | 14 | Learned after FEMA inspects or checks the application |
+| Leakage | 43 | Results of the decision, so never used |
+| ID / constant | 15 | ID numbers, or the same on every row |
 | Under review | 1 | `utilitiesOut`, held out of both tiers for now |
 
 **Our analysis**
@@ -140,7 +140,7 @@ The borderline case is the `currentLocation` variable. It includes things that h
 
 **AI-assisted analysis**
 
-This kind of check is called a univariate leakage test. Since no honest column gets close to 1 on its own, a column that scores near 1.00 is almost certainly part of the answer. Moving `currentLocation` also made the model more honest.
+This kind of check is called a univariate leakage test, which means testing one column at a time. No honest column gets close to 1 by itself, so a column that scores near 1.00 is almost surely part of the answer. Moving `currentLocation` also made the model more honest.
 
 ![Figure 3.1: Link with eligibility (leakage check)](../figures/leakage_association.png)
 *Figure 3.1. Each column's link with eligibility (Cramér's V). Leakage columns sit at the top.*
@@ -153,9 +153,9 @@ Most applicants were older people in one- or two-person households who owned the
 
 **AI-assisted analysis**
 
-In numbers: 57% of applicants are 50 or older, most households have one or two people, 64% own their home, and 77% registered online or through the mobile app. ZIP code has high cardinality, with about 560 different values (and about 3,000 census blocks), which is too many to give each one its own column. Frequency encoding replaces each ZIP with how often it appears, so the model gets one number column instead of hundreds.
+In numbers: 57% of applicants are 50 or older, most households have one or two people, 64% own their home, and 77% signed up online or on the mobile app. There are about 560 different ZIP codes, which is called high cardinality. That is too many to give each one its own column. Frequency encoding swaps each ZIP for how often it shows up, so the model gets one number column instead of hundreds.
 
-**ML takeaway:** We log transform the damage columns to shrink the skew and add a yes/no "has damage" flag, and we frequency-encode ZIP codes instead of giving each ZIP its own column.
+**ML takeaway:** We log transform the damage columns to shrink the skew and add a yes/no "has damage" column. We frequency-encode ZIP codes instead of giving each ZIP its own column.
 
 ### 3.5 Relationships with the target
 
@@ -165,9 +165,9 @@ If the home isn't the applicant's main home, they basically never get approved. 
 
 **AI-assisted analysis**
 
-The numbers behind this (Figure 3.2): non-primary residences are about 0.4% eligible; reporting emergency needs raises approval from 34% to 66%; homeowners insurance lowers it from 55% to 47%, since FEMA doesn't pay for damage insurance already covers; income runs from 61% approved under $15k to 45% above $175k, although the $0-income group is the lowest at 42%; owners and renters are 51% vs. 50%. At Tier 2, applicants whose inspection was completed were approved 73% of the time versus 38% otherwise, and approval ranges from 43% to 62% across the 22 largest ZIP codes (Figures D.3 and D.4).
+The numbers behind this (Figure 3.2): homes that aren't the main home are approved about 0.4% of the time. Reporting emergency needs raises approval from 34% to 66%. Homeowners insurance lowers it from 55% to 47%, since FEMA doesn't pay for damage that insurance already covers. Approval goes from 61% for incomes under $15k down to 45% above $175k, but the $0-income group is the lowest at 42%. Owners and renters are almost the same (51% vs. 50%). At Tier 2, people whose inspection was finished were approved 73% of the time, compared to 38% for everyone else. Approval also runs from 43% to 62% across the 22 biggest ZIP codes (Figures D.3 and D.4).
 
-**ML takeaway:** Several of the strongest signals act like if/then rules instead of smooth trends, like the primary-residence cutoff and the $0-income group, so tree-based models such as decision trees and random forests should fit this data well. Income stays an unordered category, because the $0 group breaks the usual "more income, less aid" pattern.
+**ML takeaway:** Some of the strongest features work like yes/no rules instead of slow trends, like the main-home rule and the $0-income group. So tree-based models like decision trees and random forests should fit this data well. Income stays a category with no order, because the $0 group breaks the usual "more income, less aid" pattern.
 
 ![Figure 3.2: Eligibility by feature](../figures/eligibility_by_feature.png)
 *Figure 3.2. Eligibility rate within each category of key features.*
@@ -178,9 +178,9 @@ The numbers behind this (Figure 3.2): non-primary residences are about 0.4% elig
 |---|---|---|
 | `renterDamageLevel` | 96% | Only applies to renters |
 | `highWaterLocation` | 88% | Only applies where there was a flood mark |
-| `shelterNeed` | 82% | Almost always "yes" when filled in, so blank ≈ not reported |
+| `shelterNeed` | 82% | Almost always "yes" when filled in, so a blank likely means not reported |
 | `habitabilityRepairsRequired` | 73% | Not filled in for most applicants (reason not confirmed) |
-| `foodNeed` | 52% | Almost always "yes" when filled in, so blank ≈ not reported |
+| `foodNeed` | 52% | Almost always "yes" when filled in, so a blank likely means not reported |
 | `selfAssessmentInformation` | 15% | Applicant's own damage rating, left blank by some |
 
 **Our analysis**
@@ -189,9 +189,9 @@ When `foodNeed` is blank, it means the applicant just didn't say they need food.
 
 **AI-assisted analysis**
 
-Nineteen columns have missing values; eleven are candidate features and six are more than 10% missing (Figure D.7). Some blanks are structural, since `renterDamageLevel` only applies to renters, so the data is not missing completely at random.
+Nineteen columns have missing values. Eleven of those are columns we could use, and six are more than 10% missing (Figure D.7). Some blanks are there because the question doesn't apply, like `renterDamageLevel` for people who aren't renters. So the data is not missing completely at random.
 
-**ML takeaway:** Filling the blanks with an average would erase what the blank is telling us, so we add a yes/no "was this blank?" column for these features, and fill any remaining gaps inside the pipeline using only the training data.
+**ML takeaway:** Filling the blanks with an average would throw away what the blank tells us. So we add a yes/no "was this blank?" column for these features, and fill any other gaps using only the training data.
 
 ### 3.7 Correlation analysis
 
@@ -201,19 +201,19 @@ Not a single column predicts the answer confidently alone, so the model will pro
 
 **AI-assisted analysis**
 
-The strongest single correlation with the target is only about 0.36 (Figure D.5). Some features are near-copies of each other (Figure D.6): inspection issued vs. inspection completed (1.00), verified home damage vs. flood damage amount (0.97), and reported damage vs. home damage (0.83).
+The strongest single correlation with the target is only about 0.36 (Figure D.5). Some features are almost copies of each other (Figure D.6): inspection issued and inspection completed (1.00), verified home damage and flood damage amount (0.97), and reported damage and home damage (0.83).
 
-**ML takeaway:** The near-copy pairs are multicollinearity, so we drop one from each pair for linear models like logistic regression, while tree-based models can keep both.
+**ML takeaway:** Features that are almost copies of each other are called multicollinearity. We drop one from each pair for linear models like logistic regression. Tree-based models can keep both.
 
 ### 3.8 Data quality assessment
 
 | Check | What we found | What we do |
 |---|---|---|
 | Constant columns | 14 columns have the same value on every row | Drop them |
-| Duplicates | 407 rows (0.21%) match on every non-ID column | Keep them |
-| Location errors | 6,357 rows (3.3%) have a census block outside Lee County (2,707 are `NO_INTERSECT`); only 17 have a non-Florida ZIP | Keep them; `NO_INTERSECT` as its own category |
+| Duplicates | 407 rows (0.21%) are the same in every column except the ID | Keep them |
+| Location errors | 6,357 rows (3.3%) have a census block outside Lee County (2,707 are `NO_INTERSECT`). Only 17 have a ZIP outside Florida | Keep them, with `NO_INTERSECT` as its own category |
 | Hand-typed city names | Many spellings (`FT MYERS`, `FT MYERS BCH`) | Drop the city column |
-| Impossible values | A flood depth of 960 inches (80 feet) | Cap it at a reasonable max |
+| Impossible values | A flood depth of 960 inches (80 feet) | Cap it at a sensible maximum |
 | Dates | Only 2 applications dated before the disaster was declared | Keep them |
 
 **Our analysis**
@@ -222,7 +222,7 @@ A flood depth of 960 inches (80 feet) has to be a typo, so we cap it instead of 
 
 **AI-assisted analysis**
 
-The data quality is good overall, and every problem has a specific fix that carries into the Data Preparation Plan (Section 4).
+The data quality is good overall. Every problem has a fix, and the fixes carry into the Data Preparation Plan (Section 4).
 
 ### 3.9 Challenges and limitations
 
@@ -234,14 +234,14 @@ Our data is only Hurricane Ian in Lee County, so a model trained on it won't nec
 
 | Challenge | Why it matters for the model |
 |---|---|
-| Data leakage | Scores look perfect but mean nothing if it isn't controlled |
-| One storm, one county | Limited generalization to other disasters |
-| Valid registrations only | Selection bias |
-| "Not eligible" covers many reasons | Label noise |
-| Heavy skew and meaningful blanks | Needs log transforms and "was this blank?" columns |
-| Too many ZIP codes and census blocks | Encoding can overfit if done outside the CV folds |
-| Near-copy features | Multicollinearity for linear models |
-| Approval partly follows FEMA's own rules | A high score doesn't prove the model understands need |
+| Data leakage | Scores look perfect but mean nothing if we don't control it |
+| One storm, one county | The model may not work for other disasters (generalization) |
+| Valid registrations only | We can't say anything about applications that never made it in (selection bias) |
+| "Not eligible" covers many reasons | One "no" can mean very different things (label noise) |
+| Heavy skew and blanks that mean something | Needs log transforms and "was this blank?" columns |
+| Too many ZIP codes and census blocks | Encoding them can overfit if it isn't done inside the cross-validation folds |
+| Near-copy features | A problem for linear models (multicollinearity) |
+| Approval partly follows FEMA's own rules | A high score doesn't prove the model understands who needs help |
 
 ---
 
@@ -255,18 +255,18 @@ We drop the leakage columns because they are results of FEMA's decision, so they
 
 **AI-assisted analysis**
 
-| Issue (from §3) | Decision |
+| Problem (from Section 3) | What we do |
 |---|---|
-| Leakage, IDs, constants (58 columns) | Drop (listed in §3.3) |
-| `utilitiesOut` (under review) | Hold out of both tiers until FEMA confirms when it is filled in (§3.6) |
-| `damagedCity` (hand-typed) | Drop; use ZIP and census block instead |
-| Yes/No columns stored as text with blanks | Convert to 0/1; keep blanks as truly missing (not 0) |
-| Ordered ranges (`applicantAge`, household counts) | **Ordinal encoding** (`>5` becomes 6) |
-| Income bracket | Keep as an unordered category (the "$0" group breaks the ordering) |
-| Missing values | Do **not** fill in during cleaning. Use missing indicators plus median imputation (linear models) or native handling (boosting), fit on training data only |
-| Implausible values (`waterLevel` = 960 in) | Cap at a high percentile |
-| Out-of-county blocks | Keep; treat `NO_INTERSECT` as its own category |
-| Duplicate-looking rows | Keep (see §3.8) |
+| Leakage, ID and constant columns (58 columns) | Drop them (listed in Section 3.3) |
+| `utilitiesOut` (under review) | Leave it out of both tiers until FEMA confirms when it is filled in (Section 3.6) |
+| `damagedCity` (typed by hand) | Drop it and use ZIP and census block instead |
+| Yes/No columns stored as text with blanks | Change to 1 and 0, and keep blanks as blank (not 0) |
+| Ordered ranges (`applicantAge`, household counts) | Turn into numbers in order, called ordinal encoding (`>5` becomes 6) |
+| Income bracket | Keep as a category with no order (the "$0" group breaks the order) |
+| Missing values | Don't fill them in during cleaning. Add "was this blank?" columns, then fill with the median for linear models. Boosting models can handle blanks themselves. Anything learned comes from the training data only |
+| Impossible values (`waterLevel` = 960 in) | Cap at a high percentile |
+| Blocks outside the county | Keep, with `NO_INTERSECT` as its own category |
+| Rows that look like duplicates | Keep (see Section 3.8) |
 
 ### 4.2 Feature engineering
 
@@ -276,12 +276,12 @@ Filling the blanks with the average would hide the fact that the answer was blan
 
 **AI-assisted analysis**
 
-- `daysSinceLandfall` from the application date (already built).
-- **Log transform** (`log1p`) of the skewed dollar and damage columns, plus "has damage" yes/no flags.
-- **Missing-value indicators** for the columns whose blanks carry meaning.
-- ZIP and census block: **frequency encoding** first, with **target encoding** tested *inside* cross-validation folds.
-- Group rare categories together; drop one of each near-duplicate pair for linear models.
-- Possible **interaction features**, such as emergency needs × primary residence, to test in Milestone 2.
+- `daysSinceLandfall`, made from the application date (already built).
+- Log transform (`log1p`) of the skewed dollar and damage columns, plus yes/no "has damage" columns.
+- "Was this blank?" columns for the features where a blank means something.
+- ZIP and census block: frequency encoding first. We will also try target encoding, done inside the cross-validation folds.
+- Group rare categories together, and drop one of each near-copy pair for linear models.
+- Maybe combine features, like emergency needs together with primary residence (an interaction feature), to test in Milestone 2.
 
 ### 4.3 Data transformation
 
@@ -291,7 +291,7 @@ The model only learns from the training piece because if it knows what to expect
 
 **AI-assisted analysis**
 
-**Scaling** (standardization) and **one-hot encoding** are applied only for models that need them (logistic regression, and any distance-based method). Tree-based models use the unscaled data. **Every transformation that learns from data (imputation, scaling, encoding) is fit on the training split only**, inside a scikit-learn `Pipeline`, to prevent a second kind of leakage (**train–test contamination**).
+Scaling (putting numbers on the same scale) and one-hot encoding (one yes/no column per category) are only used for the models that need them, like logistic regression and distance-based methods. Tree-based models use the data as it is. Anything that learns from the data, like filling blanks, scaling, and encoding, is learned from the training piece only, inside a scikit-learn `Pipeline`. This stops a second kind of leakage, where the test data affects training.
 
 ### 4.4 Train / validation / test strategy
 
@@ -301,11 +301,11 @@ Because that is our final score for the model. If we used the test set more than
 
 **AI-assisted analysis**
 
-- **Stratified split, 60% train / 20% validation / 20% test**, with fixed random seed 42 so everyone gets the same split. Each part keeps the same 50.7% / 49.3% mix. Implemented in `split_data()`.
-- **The test set is touched once**, at the very end of Milestone 2.
-- Cross-validation (Section 5.3) uses the 80% development set (train + validation); the 20% test set stays sealed.
-- **Robustness check (temporal validation):** because applications arrive over time, we will also train on early applicants and test on later ones to see whether performance holds up.
-- We cannot link applications from the same household, so we note this as a limitation.
+- Stratified split: 60% train, 20% validation, 20% test, with random seed 42 so everyone gets the same split. Each piece keeps the same 50.7% / 49.3% mix. This is done in `split_data()`.
+- The test set is used once, at the very end of Milestone 2.
+- Cross-validation (Section 5.3) uses the train and validation pieces together (80%). The 20% test set stays untouched.
+- Time check: applications came in over time, so we will also train on early applicants and test on later ones to see if the model still holds up.
+- We can't link applications from the same household, so we list this as a limit.
 
 ---
 
@@ -321,12 +321,12 @@ We start with logistic regression because it's a very simple and quick model, ma
 
 | Model | Why it fits this data |
 |---|---|
-| Logistic regression | Simple, fast, interpretable coefficients; the baseline to beat |
-| Decision tree | Human-readable rules, and FEMA's process is rule-like |
-| Random forest | Robust to skew, mixed types, and outliers; bagging reduces a single tree's **variance** (overfitting) |
-| Gradient boosting | Captures the feature interactions suggested in §3.7 and the rule-like thresholds in §3.5 |
+| Logistic regression | Simple, fast, and easy to explain. The baseline to beat |
+| Decision tree | Makes rules a person can read, and FEMA's process works like rules |
+| Random forest | Handles skew, mixed data types, and outliers. Using many trees makes it less likely to overfit than one tree |
+| Gradient boosting | Can pick up features working together (Section 3.7) and the yes/no cutoffs (Section 3.5) |
 
-**Baselines are not yet re-run on the verified data.** The earlier untuned results came from `src/models/baseline.py` on an earlier download, and the EDA notebook no longer reproduces them. We will re-run the baselines on the verified data in Milestone 2 and report ROC-AUC, accuracy, and F1 for Tier 1 and Tier 2 then.
+The baselines have not been re-run on the verified data yet. The earlier results came from `src/models/baseline.py` on an older download, and the EDA notebook doesn't produce them anymore. We will re-run the baselines on the verified data in Milestone 2 and report ROC-AUC, accuracy, and F1 for Tier 1 and Tier 2 then.
 
 | Reference | ROC-AUC | Accuracy | F1 |
 |---|---|---|---|
@@ -342,11 +342,11 @@ Telling someone they'll get aid when they won't is arguably worse because it del
 
 | Metric | Why we use it |
 |---|---|
-| **ROC-AUC** (primary) | Measures ranking quality regardless of the decision threshold; suitable because the classes are balanced |
-| **Precision, Recall, F1** | A false "ineligible" and a false "eligible" have different real-world costs, so we report both and choose the **decision threshold** explicitly |
-| **Accuracy** | Fair here because of the class balance |
-| **Confusion matrix** | Shows exactly where the errors fall |
-| **Group error rates** (age, income) | Fairness audit (target in §2.2) |
+| ROC-AUC (main) | Shows how well the model ranks eligible above not eligible, no matter where the cutoff is. A good fit because the classes are balanced |
+| Precision, Recall, F1 | A wrong "not eligible" and a wrong "eligible" cost different things in real life, so we report both and pick the cutoff on purpose |
+| Accuracy | Fair here because the classes are balanced |
+| Confusion matrix | Shows exactly where the mistakes are |
+| Group error rates (age, income) | Fairness check (target in Section 2.2) |
 
 ### 5.3 Cross-validation and hyperparameter tuning
 
@@ -356,20 +356,20 @@ Testing five times lets us see how much the model's score changes with each run,
 
 **AI-assisted analysis**
 
-Five-fold **stratified cross-validation** on the development set. **Randomized hyperparameter search** runs inside the folds. Every model uses the same folds so comparisons are fair. The test set is used once, for the final score.
+We use five-fold stratified cross-validation on the train and validation data. The search for the best settings (randomized hyperparameter search) runs inside the folds. Every model uses the same folds so the comparison is fair. The test set is used once, for the final score.
 
 ### 5.4 Expected challenges and mitigation
 
 **AI-assisted analysis**
 
-| Challenge | Mitigation |
+| Challenge | What we do about it |
 |---|---|
-| Hidden leakage as scores get high | Keep the roles file as the single source of truth; repeat the "drop a feature group and see what moves" **ablation study** for every final feature set (the EDA's location check is what moved `currentLocation` out of Tier 1) |
-| Very high-cardinality geography | Frequency / target encoding fit inside folds; compare with and without |
-| Skewed, mostly-zero damage columns | Log transform plus flags; prefer tree models |
-| Model just re-learns FEMA's rules | Say so honestly; report cases where the model disagrees with outcomes as the interesting ones |
-| Fairness across age / income / place | Report group error rates; investigate any gap over 5 points |
-| Results specific to one storm | State the scope; run the temporal robustness check |
+| Hidden leakage when scores get high | Keep one roles file for the whole team. For every final feature set, drop a group of features and see what changes (an ablation study). The EDA's location check is how `currentLocation` got moved out of Tier 1 |
+| Too many ZIP codes and census blocks | Do frequency and target encoding inside the folds, and compare with and without |
+| Skewed damage columns that are mostly zero | Log transform plus yes/no columns, and lean on tree models |
+| Model just re-learns FEMA's rules | Say so honestly, and look closely at cases where the model disagrees with the outcome |
+| Fairness across age, income, and place | Report error rates by group and look into any gap over 5 points |
+| Results only apply to one storm | Say what the scope is, and run the time check |
 
 ---
 
@@ -380,11 +380,11 @@ Five-fold **stratified cross-validation** on the development set. **Randomized h
 | Sep 14–27 | Project setup, data download, first EDA and report draft | All |
 | Sep 28–Oct 6 | Section writing; EDA notebook rebuilt on the verified data | All |
 | **Oct 7** | **Milestone 1 due** | All |
-| Oct 8–21 | Finish the preprocessing pipeline (feature engineering, encoders) and the `notebooks/preprocessing` notebook | All |
-| Oct 22–31 | Re-run baselines, train all models, cross-validate, tune hyperparameters | All |
-| Nov 1–10 | Evaluation: model comparison, interpretation (feature importance), leakage ablations, fairness audit | All |
-| Nov 11–18 | Write the final report; build the presentation; rehearse | All |
-| Nov 19 | Internal freeze: code runs top to bottom, PDF exported | All |
+| Oct 8–21 | Finish the data preparation code and the `notebooks/preprocessing` notebook | All |
+| Oct 22–31 | Re-run baselines, train all models, cross-validate, and tune settings | All |
+| Nov 1–10 | Evaluation: compare models, see which features matter most, check for leakage, check fairness | All |
+| Nov 11–18 | Write the final report, build the presentation, and rehearse | All |
+| Nov 19 | Team deadline: code runs start to finish, PDF made | All |
 | **Nov 21** | **Milestone 2 due** | All |
 | **Nov 23 / Dec 2** | **Presentation (15 min + Q&A)** | All |
 
@@ -393,10 +393,10 @@ Five-fold **stratified cross-validation** on the development set. **Randomized h
 **Risks and contingencies**
 | Risk | Contingency |
 |---|---|
-| A teammate is unavailable | Everything is in Git with documented code, so work can be picked up; weekly check-ins |
-| Scores drop below the baseline after removing leaky features | Report honestly; the leakage-removal story is itself a finding |
-| Merge conflicts in shared notebooks | One person per notebook at a time; small commits; pull before starting |
-| Running out of time before Nov 21 | Freeze the model set by Oct 31; drop optional models first |
+| A teammate is unavailable | Everything is in Git with comments in the code, so someone else can pick it up. Weekly check-ins |
+| Scores drop below the baseline after removing leakage columns | Report it honestly. Removing leakage is a finding too |
+| Conflicts when two people edit the same notebook | One person per notebook at a time, small commits, pull before starting |
+| Running out of time before Nov 21 | Lock the list of models by Oct 31 and drop the optional ones first |
 
 ---
 
