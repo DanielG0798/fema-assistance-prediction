@@ -1,12 +1,16 @@
 # Predicting FEMA Disaster-Assistance Eligibility: Hurricane Ian, Lee County, FL
 **CAI 4105 Machine Learning, Fall 2026, Project Milestone 1: Initial Report**
-[TEAM: team name] | [TEAM: member names] | Due **Wednesday, September 30, 2026**
+Team FEMA | Anthony Stoneking, Daniel Ortiz, Nandor Laar | Due **Wednesday, October 7, 2026**
 
 ---
 
 ## 1. Executive Summary *(1 page)*
 
-[ANTHONY: write the Executive Summary here]
+Our project is trying to predict whether FEMA gives a household aid after Hurricane Ian, specifically in Lee County, FL. The data that we're using is directly from FEMA, the 194,482 applications and 100 columns, with a near 50/50 split of those who received aid and those who didn't.
+
+One of the most important things we found was that 43 out of the 100 columns are results of FEMA's decision, leakage, so we can't use them. We separate it into two tiers. Tier 1: 25 features known at registration, and Tier 2: 39 features that are known after inspection.
+
+The plan is to do a 60% train, 20% validation, and 20% test split, try four models to see how it changes, do a 5-fold cross-validation, and score with ROC-AUC. We cross-validate so that we can see how much the score changes from run to run, so that we aren't basing our model off of one run. What's next is to build and test models for Milestone 2.
 
 ---
 
@@ -68,8 +72,6 @@ A tuned, audited model would give FEMA an explainable signal at registration tha
 ---
 
 ## 3. Data Understanding *(3–4 pages · 7 pts)*
-
-> ✏️ **Owner note.** This is the highest-weighted section. The story runs in the order a grader checks: **what the data is → what we predict → what we must not use → what it looks like → how its parts relate → what's wrong with it → what that means for modeling.** Every subsection ends with an "overall" sentence that links the finding to a modeling decision, the bridge into Section 4.
 
 Full analysis: `notebooks/eda/01_initial_eda.ipynb` (exported as `reports/milestone_1/eda_notebook.html`). Column-by-column definitions: `docs/data_dictionary.md` (Appendix A).
 
@@ -244,22 +246,20 @@ Five-fold **stratified cross-validation** on the development set. **Randomized h
 
 ## 6. Project Timeline *(1 page)*
 
-> ✏️ **Owner note.** Fill every `[TEAM]` owner cell with a name before export. The internal deadlines for this week are in the team responsibilities doc.
-
 | Dates | Work | Owner |
 |---|---|---|
-| Sep 22–25 | Team meeting: agree on the target, success criteria, and roles; each member re-runs the EDA notebook and reads the data dictionary | All |
-| Sep 26–29 | Finalize and proofread the report; export to PDF; assemble `TeamName_Milestone1_YYYYMMDD.zip` | [TEAM] |
-| **Sep 30** | **Milestone 1 due** | All |
-| Oct 1–14 | Finish the preprocessing pipeline (feature engineering, encoders) and the `notebooks/preprocessing` notebook | [TEAM] |
-| Oct 15–31 | Train all models, cross-validate, tune hyperparameters | [TEAM] |
-| Nov 1–10 | Evaluation: model comparison, interpretation (feature importance), leakage ablations, fairness audit | [TEAM] |
+| Sep 14–27 | Project setup, data download, first EDA and report draft | All |
+| Sep 28–Oct 6 | Section writing; EDA notebook rebuilt on the verified data | All |
+| **Oct 7** | **Milestone 1 due** | All |
+| Oct 8–21 | Finish the preprocessing pipeline (feature engineering, encoders) and the `notebooks/preprocessing` notebook | All |
+| Oct 22–31 | Re-run baselines, train all models, cross-validate, tune hyperparameters | All |
+| Nov 1–10 | Evaluation: model comparison, interpretation (feature importance), leakage ablations, fairness audit | All |
 | Nov 11–18 | Write the final report; build the presentation; rehearse | All |
 | Nov 19 | Internal freeze: code runs top to bottom, PDF exported | All |
 | **Nov 21** | **Milestone 2 due** | All |
 | **Nov 23 / Dec 2** | **Presentation (15 min + Q&A)** | All |
 
-**Team responsibilities.** [TEAM: name] data and EDA | [TEAM: name] modeling | [TEAM: name] evaluation and report. Everyone contributes to every phase and attends the presentation.
+**Team responsibilities.** Specific roles for Milestone 2 are still to be assigned. Everyone contributes to every phase and attends the presentation.
 
 **Risks and contingencies**
 | Risk | Contingency |
