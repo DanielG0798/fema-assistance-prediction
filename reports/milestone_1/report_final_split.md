@@ -1,6 +1,6 @@
 # Predicting FEMA Disaster-Assistance Eligibility: Hurricane Ian, Lee County, FL
 **CAI 4105 Machine Learning, Fall 2026, Project Milestone 1: Initial Report**
-[TEAM: team name] | [TEAM: member names] | Due **Wednesday, September 30, 2026**
+[TEAM: team name] | [TEAM: member names] | Due **Wednesday, October 7, 2026**
 
 ---
 
@@ -243,8 +243,6 @@ Our data is only Hurricane Ian in Lee County, so a model trained on it won't nec
 
 ## 4. Data Preparation Plan *(2–3 pages · 3 pts)*
 
-> ✏️ **Owner note.** Each row in 4.1 should answer a problem raised in Section 3. The cleaning code already exists and is shared: `src/features/prepare.py`.
-
 ### 4.1 Data cleaning strategy
 
 **📝 Our analysis**
@@ -309,8 +307,6 @@ Because that is our final score for the model. If we used the test set more than
 
 ## 5. Modeling Approach *(2–3 pages)*
 
-> ✏️ **Owner note.** Justify each model by a property of *our* data from Section 3 (skew, interactions, rule-like signals), not by general reputation.
-
 ### 5.1 Algorithm selection and justification
 
 **📝 Our analysis**
@@ -374,8 +370,6 @@ Five-fold **stratified cross-validation** on the development set. **Randomized h
 ---
 
 ## 6. Project Timeline *(1 page)*
-
-> ✏️ **Owner note.** Fill every `[TEAM]` owner cell with a name before export. The internal deadlines for this week are in the team responsibilities doc.
 
 | Dates | Work | Owner |
 |---|---|---|
