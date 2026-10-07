@@ -12,17 +12,11 @@
 
 ## 2. Business Understanding *(2–3 pages · 5 pts)*
 
-
 ### 2.1 Problem definition and motivation
 
+**📝 Our analysis**
 
 After a big hurricaine like Ian back in 2022, tens of thousands of people and households applied for federal aid within days of the disaster. In Lee county, applications peaked September 30th, 2022 (15,240 in one day), and 94% arrived by the end of October (Figure 2.1). Each application goes through a referral, documentation checks, with sometimes an inspection and a decision. Around half of the people end without an award and for various reasons: 30% of those had insurance, 19% had no eligible damage or needs and 13% did not respond or just withdrew from the application, and 35% were never referred to the program (Figure 2.2).
-
-![Figure 2.1: Applications over time](../figures/applications_over_time.png)
-*Figure 2.1. Daily applications; the peak is Sep 30, 2022.*
-
-![Figure 2.2: Reasons for ineligibility](../figures/ineligible_reasons.png)
-*Figure 2.2. Why applicants were not awarded aid.*
 
 **The question our model answers:** *Given what we know about an applicant, will FEMA award them IHP aid?*
 
@@ -34,7 +28,18 @@ After a big hurricaine like Ian back in 2022, tens of thousands of people and ho
 
 **What it is not.** The model is decision *support*. It must never automatically deny anyone aid. A person makes every final decision.
 
+**🤖 AI-assisted analysis**
+
+![Figure 2.1: Applications over time](../figures/applications_over_time.png)
+*Figure 2.1. Daily applications; the peak is Sep 30, 2022.*
+
+![Figure 2.2: Reasons for ineligibility](../figures/ineligible_reasons.png)
+*Figure 2.2. Why applicants were not awarded aid.*
+
 ### 2.2 Business objectives and success criteria
+
+**🤖 AI-assisted analysis**
+
 | Objective | How we will measure it | Proposed target  |
 |---|---|---|
 | Predict if someone gets aid right when they apply (Tier 1) | ROC-AUC and F1 on the held-out test set | Beat the untuned baseline: ROC-AUC ≥ 0.90, F1 ≥ 0.91 |
@@ -46,6 +51,9 @@ After a big hurricaine like Ian back in 2022, tens of thousands of people and ho
 *Note.* These targets were set from earlier untuned baselines that must be re-run on the verified data (Section 5.1) before they are confirmed. They are goals for the tuned models, not promises.
 
 ### 2.3 Stakeholder analysis
+
+**🤖 AI-assisted analysis**
+
 | Stakeholder | Interest | Cost of a wrong prediction |
 |---|---|---|
 | Applicants (survivors) | Quick and fair decisions that they can understand | A household wrongly flagged as "ineligible" (a **false negative**) might just give up on a claim they deserve |
@@ -56,13 +64,21 @@ After a big hurricaine like Ian back in 2022, tens of thousands of people and ho
 | Our team / instructor | A solid method and honest reporting | n/a |
 
 ### 2.4 Expected impact and value proposition
+
+**📝 Our analysis**
+
 A tuned, audited model would give FEMA an explainable signal at registration that also comes in early, when information is cheapest to act on. Its value is speed and prioritization, not replacing judgment. Because the outcome depends partially on FEMA's own screening rules, the model also works as a *consistency check*: applications where the model strongly disagrees with the outcome deserve a second check.
 
 ### 2.5 Risks and assumptions
+
+**📝 Our analysis**
+
 - **Selection bias:** only *valid* registrations are in the data, so we can say nothing about invalid applications.
 - **Scope / generalization:** one storm and one county, so results may not transfer to other disasters.
 - **Label noise:** "not eligible" mixes many reasons (insurance, missing documents, withdrawal, never referred).
 - **Fairness:** age, income, and location can correlate with vulnerable groups, so we will audit error rates by group.
+**🤖 AI-assisted analysis**
+
 - The flat $700 payment (confirmed): the $700 award is FEMA's *Serious Needs Assistance*, a one time and flexible payment per household for urgent needs: food, water, and medication, approved soon after registration (FEMA, *Serious Needs Assistance* fact sheet). Because it can be approved early and follows a simple rule, part of what our model learns is this screening part.
 
 ---
