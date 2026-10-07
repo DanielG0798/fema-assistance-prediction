@@ -10,7 +10,7 @@ Our project is trying to predict whether FEMA gives a household aid after Hurric
 
 One of the most important things we found was that 43 out of the 100 columns are results of FEMA's decision, leakage, so we can't use them. We separate it into two tiers. Tier 1: 25 features known at registration, and Tier 2: 39 features that are known after inspection.
 
-The plan is to split the data 60 / 20 / 20 [ANTHONY: one sentence on what the three pieces are for], try four models to see how it changes, do a 5-fold cross-validation [ANTHONY: a few words on why], and score with ROC-AUC. What's next is to build and test models for Milestone 2.
+The plan is to do a 60% train, 20% validation, and 20% test split, try four models to see how it changes, do a 5-fold cross-validation, and score with ROC-AUC. We cross-validate so that we can see how much the score changes from run to run, so that we aren't basing our model off of one run. What's next is to build and test models for Milestone 2.
 
 ---
 
