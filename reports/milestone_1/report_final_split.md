@@ -312,21 +312,34 @@ Because that is our final score for the model. If we used the test set more than
 > ✏️ **Owner note.** Justify each model by a property of *our* data from Section 3 (skew, interactions, rule-like signals), not by general reputation.
 
 ### 5.1 Algorithm selection and justification
+
+**📝 Our analysis**
+
+We start with logistic regression because it's a very simple and quick model, making it a good baseline for testing other models. Some of our strongest features work like yes/no rules, like whether the home is the primary residence, and that's exactly what tree models are good at.
+
+**🤖 AI-assisted analysis**
+
 | Model | Why it fits this data |
 |---|---|
 | Logistic regression | Simple, fast, interpretable coefficients; the baseline to beat |
 | Decision tree | Human-readable rules, and FEMA's process is rule-like |
 | Random forest | Robust to skew, mixed types, and outliers; bagging reduces a single tree's **variance** (overfitting) |
 | Gradient boosting | Captures the feature interactions suggested in §3.7 and the rule-like thresholds in §3.5 |
-| [TEAM: add or remove models based on what the course has covered, e.g. k-NN or a neural network] | |
 
-**Baselines are not yet re-run on the verified data.** The earlier untuned results came from `src/models/baseline.py` on an earlier download, and the EDA notebook no longer reproduces them. [TEAM: re-run the baselines on the verified data and insert ROC-AUC, accuracy, and F1 for Tier 1 and Tier 2 here.]
+**Baselines are not yet re-run on the verified data.** The earlier untuned results came from `src/models/baseline.py` on an earlier download, and the EDA notebook no longer reproduces them. We will re-run the baselines on the verified data in Milestone 2 and report ROC-AUC, accuracy, and F1 for Tier 1 and Tier 2 then.
 
 | Reference | ROC-AUC | Accuracy | F1 |
 |---|---|---|---|
 | Always guess the majority class (50.7% eligible) | 0.500 | 0.507 | 0.000 |
 
 ### 5.2 Evaluation metrics
+
+**📝 Our analysis**
+
+Telling someone they'll get aid when they won't is arguably worse because it delays the amount of preparation that they'll have to do as a result of waiting for support from FEMA.
+
+**🤖 AI-assisted analysis**
+
 | Metric | Why we use it |
 |---|---|
 | **ROC-AUC** (primary) | Measures ranking quality regardless of the decision threshold; suitable because the classes are balanced |
@@ -336,9 +349,19 @@ Because that is our final score for the model. If we used the test set more than
 | **Group error rates** (age, income) | Fairness audit (target in §2.2) |
 
 ### 5.3 Cross-validation and hyperparameter tuning
+
+**📝 Our analysis**
+
+Testing five times lets us see how much the model's score changes with each run, so one lucky or unlucky split doesn't fool us.
+
+**🤖 AI-assisted analysis**
+
 Five-fold **stratified cross-validation** on the development set. **Randomized hyperparameter search** runs inside the folds. Every model uses the same folds so comparisons are fair. The test set is used once, for the final score.
 
 ### 5.4 Expected challenges and mitigation
+
+**🤖 AI-assisted analysis**
+
 | Challenge | Mitigation |
 |---|---|
 | Hidden leakage as scores get high | Keep the roles file as the single source of truth; repeat the "drop a feature group and see what moves" **ablation study** for every final feature set (the EDA's location check is what moved `currentLocation` out of Tier 1) |
