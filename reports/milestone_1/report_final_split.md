@@ -388,7 +388,7 @@ Five-fold **stratified cross-validation** on the development set. **Randomized h
 | **Nov 21** | **Milestone 2 due** | All |
 | **Nov 23 / Dec 2** | **Presentation (15 min + Q&A)** | All |
 
-**Team responsibilities.** Specific roles for Milestone 2 are still to be assigned. Everyone contributes to every phase and attends the presentation.
+**Team responsibilities for Milestone 2.** Daniel Ortiz leads data preparation and model training. Anthony Stoneking leads the data analysis updates, leakage checks, and model evaluation. Nandor Laar leads the business value and fairness review and the final report. Everyone contributes to every phase and attends the presentation.
 
 **Risks and contingencies**
 | Risk | Contingency |
