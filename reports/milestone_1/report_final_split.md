@@ -4,7 +4,7 @@ Team FEMA | Anthony Stoneking, Daniel Ortiz, Nandor Laar | Due **Wednesday, Octo
 
 ---
 
-## 1. Executive Summary *(1 page)*
+## 1. Executive Summary
 
 Our project is trying to predict whether FEMA gives a household aid after Hurricane Ian, specifically in Lee County, FL. The data that we're using is directly from FEMA, the 194,482 applications and 100 columns, with a near 50/50 split of those who received aid and those who didn't.
 
@@ -14,11 +14,11 @@ The plan is to do a 60% train, 20% validation, and 20% test split, try four mode
 
 ---
 
-## 2. Business Understanding *(2–3 pages · 5 pts)*
+## 2. Business Understanding
 
 ### 2.1 Problem definition and motivation
 
-**📝 Our analysis**
+**Our analysis**
 
 After a big hurricaine like Ian back in 2022, tens of thousands of people and households applied for federal aid within days of the disaster. In Lee county, applications peaked September 30th, 2022 (15,240 in one day), and 94% arrived by the end of October (Figure 2.1). Each application goes through a referral, documentation checks, with sometimes an inspection and a decision. Around half of the people end without an award and for various reasons: 30% of those had insurance, 19% had no eligible damage or needs and 13% did not respond or just withdrew from the application, and 35% were never referred to the program (Figure 2.2).
 
@@ -32,7 +32,7 @@ After a big hurricaine like Ian back in 2022, tens of thousands of people and ho
 
 **What it is not.** The model is decision *support*. It must never automatically deny anyone aid. A person makes every final decision.
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 ![Figure 2.1: Applications over time](../figures/applications_over_time.png)
 *Figure 2.1. Daily applications; the peak is Sep 30, 2022.*
@@ -42,7 +42,7 @@ After a big hurricaine like Ian back in 2022, tens of thousands of people and ho
 
 ### 2.2 Business objectives and success criteria
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 | Objective | How we will measure it | Proposed target  |
 |---|---|---|
@@ -56,7 +56,7 @@ After a big hurricaine like Ian back in 2022, tens of thousands of people and ho
 
 ### 2.3 Stakeholder analysis
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 | Stakeholder | Interest | Cost of a wrong prediction |
 |---|---|---|
@@ -69,19 +69,19 @@ After a big hurricaine like Ian back in 2022, tens of thousands of people and ho
 
 ### 2.4 Expected impact and value proposition
 
-**📝 Our analysis**
+**Our analysis**
 
 A tuned, audited model would give FEMA an explainable signal at registration that also comes in early, when information is cheapest to act on. Its value is speed and prioritization, not replacing judgment. Because the outcome depends partially on FEMA's own screening rules, the model also works as a *consistency check*: applications where the model strongly disagrees with the outcome deserve a second check.
 
 ### 2.5 Risks and assumptions
 
-**📝 Our analysis**
+**Our analysis**
 
 - **Selection bias:** only *valid* registrations are in the data, so we can say nothing about invalid applications.
 - **Scope / generalization:** one storm and one county, so results may not transfer to other disasters.
 - **Label noise:** "not eligible" mixes many reasons (insurance, missing documents, withdrawal, never referred).
 - **Fairness:** age, income, and location can correlate with vulnerable groups, so we will audit error rates by group.
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 - The flat $700 payment (confirmed): the $700 award is FEMA's *Serious Needs Assistance*, a one time and flexible payment per household for urgent needs: food, water, and medication, approved soon after registration (FEMA, *Serious Needs Assistance* fact sheet). Because it can be approved early and follows a simple rule, part of what our model learns is this screening part.
 
@@ -89,33 +89,33 @@ A tuned, audited model would give FEMA an explainable signal at registration tha
 
 ## 3. Data Understanding
 
-> Each subsection has two parts so it's clear which analysis is ours and which was AI-assisted: **📝 Our analysis** (written by me) and **🤖 AI-assisted analysis** (written with Claude from my answers). Some sentences in "Our analysis" started as AI drafts that I rewrote in my own words; the AI log (`docs/AI_USAGE.md`) lists them. Numbers come from `notebooks/eda/01_initial_eda.ipynb`.
+> Each subsection has two parts so it's clear which analysis is ours and which was AI-assisted: **Our analysis** (written by me) and **AI-assisted analysis** (written with Claude from my answers). Some sentences in "Our analysis" started as AI drafts that I rewrote in my own words; the AI log (`docs/AI_USAGE.md`) lists them. Numbers come from `notebooks/eda/01_initial_eda.ipynb`.
 
 ### 3.1 Dataset description and source
 
-**📝 Our analysis**
+**Our analysis**
 
-Our data comes from FEMA's *Individuals and Households Program – Valid Registrations (v2)*, a public government dataset drawn from FEMA's National Emergency Management Information System (NEMIS). We downloaded the data from FEMA's public data site using our script `src/data/fetch_fema.py`, keeping it to Hurricane Ian (DR-4673) and to applicants in Lee County. Because FEMA refreshes the data weekly, the row count can drift slightly over time. The size of the data is 194,482 rows by 100 columns, with applications dated 2022-09-27 to 2023-01-12. One row is one household's application, which is our unit of observation. FEMA warns that this is raw data that has human error. It includes only valid registrations.
+Our data comes from FEMA's *Individuals and Households Program – Valid Registrations (v2)*, a public government dataset drawn from FEMA's National Emergency Management Information System (NEMIS). We downloaded the data from FEMA's public data site using our script `src/data/fetch_fema.py`, keeping it to Hurricane Ian (DR-4673) and to applicants in Lee County. The data was pulled with a Python script and then looked at and summarized. Because FEMA refreshes the data weekly, the row count can drift slightly over time. The size of the data is 194,482 rows by 100 columns, with applications dated 2022-09-27 to 2023-01-12. One row is one household's application, which is our unit of observation. FEMA warns that this is raw data that has human error. It includes only valid registrations.
 
 **ML takeaway:** The dataset is large enough for k-fold cross-validation without starving any fold, but because it covers a single disaster, it limits generalization.
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 None for this part beyond grammar fixes and checking the row and column counts against the data file.
 
 ### 3.2 The target variable
 
-**📝 Our analysis**
+**Our analysis**
 
 Our target is `ihpEligible`, which covers eligibility for housing and other-needs awards. Whether or not FEMA gives a household aid, yes or no, is the answer our model tries to predict. It is balanced, with 98,648 eligible (50.7%) and 95,834 not eligible (49.3%) (Figure D.1).
 
 About half got aid and half didn't, so the accuracy is a fair score and no SMOTE is required for this dataset. Each piece of the data we train and test on is stratified, so it keeps that same 50.7 / 49.3 mix.
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 `ihpEligible` is True when FEMA awarded the household housing and/or other-needs aid. Stratifying means every split is cut so it keeps the same share of each class.
 
-### 3.3 Feature roles and data leakage (our key finding)
+### 3.3 Feature roles and data leakage
 
 We sorted all 100 columns into roles, recorded in `src/utils/columns.py`, which is the team's single source of truth:
 
@@ -128,7 +128,7 @@ We sorted all 100 columns into roles, recorded in `src/utils/columns.py`, which 
 | ID / constant | 15 | Identifiers, or identical on every row |
 | Under review | 1 | `utilitiesOut`, held out of both tiers for now |
 
-**📝 Our analysis**
+**Our analysis**
 
 Tier 1 has 26 columns, but only 25 features, because `damagedCity` gets dropped and `appliedDate` turns into `daysSinceLandfall`. Tier 2 is Tier 1 with an additional 14 columns, resulting in 39 features total. We're not using `utilitiesOut` yet. It's almost never blank, but when it is, nearly everyone gets approved. That's suspicious and looks like leakage, as it is blank for only 2.7% of rows, but 99.9% of those rows were approved.
 
@@ -138,7 +138,7 @@ The borderline case is the `currentLocation` variable. It includes things that h
 
 **ML takeaway:** A score only counts if every feature would exist at the moment you make the prediction. That's why we divided the features into two tiers: Tier 1 at registration, Tier 2 after inspection.
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 This kind of check is called a univariate leakage test. Since no honest column gets close to 1 on its own, a column that scores near 1.00 is almost certainly part of the answer. Moving `currentLocation` also made the model more honest.
 
@@ -147,11 +147,11 @@ This kind of check is called a univariate leakage test. Since no honest column g
 
 ### 3.4 Summary statistics and distributions
 
-**📝 Our analysis**
+**Our analysis**
 
 Most applicants were older people in one- or two-person households who owned their homes and applied online (Figure D.2). `rpfvl` reports $0 in damages for about 83% of people, and the other 17% are widely skewed with large amounts. There are too many ZIP codes in the data, so we log transform the damage skew and frequency-encode the ZIP codes.
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 In numbers: 57% of applicants are 50 or older, most households have one or two people, 64% own their home, and 77% registered online or through the mobile app. ZIP code has high cardinality, with about 560 different values (and about 3,000 census blocks), which is too many to give each one its own column. Frequency encoding replaces each ZIP with how often it appears, so the model gets one number column instead of hundreds.
 
@@ -159,11 +159,11 @@ In numbers: 57% of applicants are 50 or older, most households have one or two p
 
 ### 3.5 Relationships with the target
 
-**📝 Our analysis**
+**Our analysis**
 
 If the home isn't the applicant's main home, they basically never get approved. Reporting emergency needs makes approval more likely. Having homeowners insurance makes it less likely, and so does higher income. Owning vs. renting doesn't matter.
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 The numbers behind this (Figure 3.2): non-primary residences are about 0.4% eligible; reporting emergency needs raises approval from 34% to 66%; homeowners insurance lowers it from 55% to 47%, since FEMA doesn't pay for damage insurance already covers; income runs from 61% approved under $15k to 45% above $175k, although the $0-income group is the lowest at 42%; owners and renters are 51% vs. 50%. At Tier 2, applicants whose inspection was completed were approved 73% of the time versus 38% otherwise, and approval ranges from 43% to 62% across the 22 largest ZIP codes (Figures D.3 and D.4).
 
@@ -183,11 +183,11 @@ The numbers behind this (Figure 3.2): non-primary residences are about 0.4% elig
 | `foodNeed` | 52% | Almost always "yes" when filled in, so blank ≈ not reported |
 | `selfAssessmentInformation` | 15% | Applicant's own damage rating, left blank by some |
 
-**📝 Our analysis**
+**Our analysis**
 
 When `foodNeed` is blank, it means the applicant just didn't say they need food. Since the blank tells us something, we shouldn't fill it in with the average.
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 Nineteen columns have missing values; eleven are candidate features and six are more than 10% missing (Figure D.7). Some blanks are structural, since `renterDamageLevel` only applies to renters, so the data is not missing completely at random.
 
@@ -195,11 +195,11 @@ Nineteen columns have missing values; eleven are candidate features and six are 
 
 ### 3.7 Correlation analysis
 
-**📝 Our analysis**
+**Our analysis**
 
 Not a single column predicts the answer confidently alone, so the model will probably need several columns working together, which will be tested in Milestone 2.
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 The strongest single correlation with the target is only about 0.36 (Figure D.5). Some features are near-copies of each other (Figure D.6): inspection issued vs. inspection completed (1.00), verified home damage vs. flood damage amount (0.97), and reported damage vs. home damage (0.83).
 
@@ -216,21 +216,21 @@ The strongest single correlation with the target is only about 0.36 (Figure D.5)
 | Impossible values | A flood depth of 960 inches (80 feet) | Cap it at a reasonable max |
 | Dates | Only 2 applications dated before the disaster was declared | Keep them |
 
-**📝 Our analysis**
+**Our analysis**
 
 A flood depth of 960 inches (80 feet) has to be a typo, so we cap it instead of letting one bad row throw off the data.
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 The data quality is good overall, and every problem has a specific fix that carries into the Data Preparation Plan (Section 4).
 
 ### 3.9 Challenges and limitations
 
-**📝 Our analysis**
+**Our analysis**
 
 Our data is only Hurricane Ian in Lee County, so a model trained on it won't necessarily work as well for a hurricane somewhere else, like Texas. None of these issues bring the project to a halt, but it does affect how we build/score the model. Sections 4 and 5 explain how we deal with them.
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 | Challenge | Why it matters for the model |
 |---|---|
@@ -245,15 +245,15 @@ Our data is only Hurricane Ian in Lee County, so a model trained on it won't nec
 
 ---
 
-## 4. Data Preparation Plan *(2–3 pages · 3 pts)*
+## 4. Data Preparation Plan
 
 ### 4.1 Data cleaning strategy
 
-**📝 Our analysis**
+**Our analysis**
 
 We drop the leakage columns because they are results of FEMA's decision, so they would make our model's accuracy look better than it really is.
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 | Issue (from §3) | Decision |
 |---|---|
@@ -270,11 +270,11 @@ We drop the leakage columns because they are results of FEMA's decision, so they
 
 ### 4.2 Feature engineering
 
-**📝 Our analysis**
+**Our analysis**
 
 Filling the blanks with the average would hide the fact that the answer was blank, and the blank itself tells us something. So we add a "yes/no" column that says whether it was blank.
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 - `daysSinceLandfall` from the application date (already built).
 - **Log transform** (`log1p`) of the skewed dollar and damage columns, plus "has damage" yes/no flags.
@@ -285,21 +285,21 @@ Filling the blanks with the average would hide the fact that the answer was blan
 
 ### 4.3 Data transformation
 
-**📝 Our analysis**
+**Our analysis**
 
 The model only learns from the training piece because if it knows what to expect, it defeats the whole purpose.
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 **Scaling** (standardization) and **one-hot encoding** are applied only for models that need them (logistic regression, and any distance-based method). Tree-based models use the unscaled data. **Every transformation that learns from data (imputation, scaling, encoding) is fit on the training split only**, inside a scikit-learn `Pipeline`, to prevent a second kind of leakage (**train–test contamination**).
 
 ### 4.4 Train / validation / test strategy
 
-**📝 Our analysis**
+**Our analysis**
 
 Because that is our final score for the model. If we used the test set more than once, we would start adjusting the model to it and the score wouldn't be honest.
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 - **Stratified split, 60% train / 20% validation / 20% test**, with fixed random seed 42 so everyone gets the same split. Each part keeps the same 50.7% / 49.3% mix. Implemented in `split_data()`.
 - **The test set is touched once**, at the very end of Milestone 2.
@@ -309,15 +309,15 @@ Because that is our final score for the model. If we used the test set more than
 
 ---
 
-## 5. Modeling Approach *(2–3 pages)*
+## 5. Modeling Approach
 
 ### 5.1 Algorithm selection and justification
 
-**📝 Our analysis**
+**Our analysis**
 
 We start with logistic regression because it's a very simple and quick model, making it a good baseline for testing other models. Some of our strongest features work like yes/no rules, like whether the home is the primary residence, and that's exactly what tree models are good at.
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 | Model | Why it fits this data |
 |---|---|
@@ -334,11 +334,11 @@ We start with logistic regression because it's a very simple and quick model, ma
 
 ### 5.2 Evaluation metrics
 
-**📝 Our analysis**
+**Our analysis**
 
 Telling someone they'll get aid when they won't is arguably worse because it delays the amount of preparation that they'll have to do as a result of waiting for support from FEMA.
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 | Metric | Why we use it |
 |---|---|
@@ -350,17 +350,17 @@ Telling someone they'll get aid when they won't is arguably worse because it del
 
 ### 5.3 Cross-validation and hyperparameter tuning
 
-**📝 Our analysis**
+**Our analysis**
 
 Testing five times lets us see how much the model's score changes with each run, so one lucky or unlucky split doesn't fool us.
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 Five-fold **stratified cross-validation** on the development set. **Randomized hyperparameter search** runs inside the folds. Every model uses the same folds so comparisons are fair. The test set is used once, for the final score.
 
 ### 5.4 Expected challenges and mitigation
 
-**🤖 AI-assisted analysis**
+**AI-assisted analysis**
 
 | Challenge | Mitigation |
 |---|---|
@@ -373,7 +373,7 @@ Five-fold **stratified cross-validation** on the development set. **Randomized h
 
 ---
 
-## 6. Project Timeline *(1 page)*
+## 6. Project Timeline
 
 | Dates | Work | Owner |
 |---|---|---|
@@ -400,7 +400,7 @@ Five-fold **stratified cross-validation** on the development set. **Randomized h
 
 ---
 
-## Appendices *(not counted in the page limit)*
+## Appendices
 - A. Data dictionary (`docs/data_dictionary.md`)
 - B. EDA notebook export (`reports/milestone_1/eda_notebook.html`)
 - C. AI usage log (`docs/AI_USAGE.md`)
