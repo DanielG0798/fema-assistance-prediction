@@ -246,6 +246,13 @@ Our data is only Hurricane Ian in Lee County, so a model trained on it won't nec
 > ✏️ **Owner note.** Each row in 4.1 should answer a problem raised in Section 3. The cleaning code already exists and is shared: `src/features/prepare.py`.
 
 ### 4.1 Data cleaning strategy
+
+**📝 Our analysis**
+
+We drop the leakage columns because they are results of FEMA's decision, so they would make our model's accuracy look better than it really is.
+
+**🤖 AI-assisted analysis**
+
 | Issue (from §3) | Decision |
 |---|---|
 | Leakage, IDs, constants (58 columns) | Drop (listed in §3.3) |
@@ -260,6 +267,13 @@ Our data is only Hurricane Ian in Lee County, so a model trained on it won't nec
 | Duplicate-looking rows | Keep (see §3.8) |
 
 ### 4.2 Feature engineering
+
+**📝 Our analysis**
+
+Filling the blanks with the average would hide the fact that the answer was blank, and the blank itself tells us something. So we add a "yes/no" column that says whether it was blank.
+
+**🤖 AI-assisted analysis**
+
 - `daysSinceLandfall` from the application date (already built).
 - **Log transform** (`log1p`) of the skewed dollar and damage columns, plus "has damage" yes/no flags.
 - **Missing-value indicators** for the columns whose blanks carry meaning.
@@ -268,9 +282,23 @@ Our data is only Hurricane Ian in Lee County, so a model trained on it won't nec
 - Possible **interaction features**, such as emergency needs × primary residence, to test in Milestone 2.
 
 ### 4.3 Data transformation
+
+**📝 Our analysis**
+
+The model only learns from the training piece because if it knows what to expect, it defeats the whole purpose.
+
+**🤖 AI-assisted analysis**
+
 **Scaling** (standardization) and **one-hot encoding** are applied only for models that need them (logistic regression, and any distance-based method). Tree-based models use the unscaled data. **Every transformation that learns from data (imputation, scaling, encoding) is fit on the training split only**, inside a scikit-learn `Pipeline`, to prevent a second kind of leakage (**train–test contamination**).
 
 ### 4.4 Train / validation / test strategy
+
+**📝 Our analysis**
+
+Because that is our final score for the model. If we used the test set more than once, we would start adjusting the model to it and the score wouldn't be honest.
+
+**🤖 AI-assisted analysis**
+
 - **Stratified split, 60% train / 20% validation / 20% test**, with fixed random seed 42 so everyone gets the same split. Each part keeps the same 50.7% / 49.3% mix. Implemented in `split_data()`.
 - **The test set is touched once**, at the very end of Milestone 2.
 - Cross-validation (Section 5.3) uses the 80% development set (train + validation); the 20% test set stays sealed.
