@@ -4,7 +4,7 @@ Team FEMA | Anthony Stoneking, Daniel Ortiz, Nandor Laar | Due **Wednesday, Octo
 
 ---
 
-## 1. Executive Summary *(1 page)*
+## 1. Executive Summary
 
 Our project is trying to predict whether FEMA gives a household aid after Hurricane Ian, specifically in Lee County, FL. The data that we're using is directly from FEMA, the 194,482 applications and 100 columns, with a near 50/50 split of those who received aid and those who didn't.
 
@@ -14,7 +14,7 @@ The plan is to do a 60% train, 20% validation, and 20% test split, try four mode
 
 ---
 
-## 2. Business Understanding *(2–3 pages · 5 pts)*
+## 2. Business Understanding
 
 
 ### 2.1 Problem definition and motivation
@@ -71,19 +71,19 @@ A tuned, audited model would give FEMA an explainable signal at registration tha
 
 ---
 
-## 3. Data Understanding *(3–4 pages · 7 pts)*
+## 3. Data Understanding
 
 Full analysis: `notebooks/eda/01_initial_eda.ipynb` (exported as `reports/milestone_1/eda_notebook.html`). Column-by-column definitions: `docs/data_dictionary.md` (Appendix A).
 
 ### 3.1 Dataset description and source
 
-Our data comes from FEMA's *Individuals and Households Program – Valid Registrations (v2)*, a public government dataset drawn from FEMA's National Emergency Management Information System (NEMIS). We downloaded the data from FEMA's public data site using our script `src/data/fetch_fema.py`, keeping it to Hurricane Ian (DR-4673) and to applicants in Lee County. The size of the data is 194,482 rows by 100 columns, with applications dated 2022-09-27 to 2023-01-12, and it has both numeric and categorical columns. One row is one household's application, which is our unit of observation. FEMA warns that this is raw data that has human error. It includes only valid registrations. Overall, the dataset is large enough for k-fold cross-validation with plenty of rows in every fold, but because it covers a single disaster, it limits generalization.
+Our data comes from FEMA's *Individuals and Households Program – Valid Registrations (v2)*, a public government dataset drawn from FEMA's National Emergency Management Information System (NEMIS). We downloaded the data from FEMA's public data site using our script `src/data/fetch_fema.py`, keeping it to Hurricane Ian (DR-4673) and to applicants in Lee County. The data was pulled with a Python script and then looked at and summarized. An AI tool wrote the first pass of the analysis. We then re-ran it on the verified data and checked every number against the data file. The size of the data is 194,482 rows by 100 columns, with applications dated 2022-09-27 to 2023-01-12, and it has both numeric and categorical columns. One row is one household's application, which is our unit of observation. FEMA warns that this is raw data that has human error. It includes only valid registrations. Overall, the dataset is large enough for k-fold cross-validation with plenty of rows in every fold, but because it covers a single disaster, it limits generalization.
 
 ### 3.2 The target variable
 
 Our target is `ihpEligible`, which is True when FEMA awarded the household housing and/or other-needs aid. Whether or not FEMA gives a household aid, yes or no, is the answer our model tries to predict. The classes are almost even, with 98,648 eligible (50.7%) and 95,834 not eligible (49.3%) (Figure D.1). Overall, about half got aid and half didn't, so the accuracy is a fair score and no SMOTE is required for this dataset. Each piece of the data we train and test on is stratified, so it keeps that same 50.7 / 49.3 mix.
 
-### 3.3 Feature roles and data leakage (our key finding)
+### 3.3 Feature roles and data leakage
 
 We sorted all 100 columns into roles, recorded in `src/utils/columns.py`, which is the one file the whole team uses for this:
 
@@ -163,7 +163,7 @@ Overall, none of these issues bring the project to a halt, but it does affect ho
 
 ---
 
-## 4. Data Preparation Plan *(2–3 pages · 3 pts)*
+## 4. Data Preparation Plan
 
 > ✏️ **Owner note.** Each row in 4.1 should answer a problem raised in Section 3. The cleaning code already exists and is shared: `src/features/prepare.py`.
 
@@ -201,7 +201,7 @@ Overall, none of these issues bring the project to a halt, but it does affect ho
 
 ---
 
-## 5. Modeling Approach *(2–3 pages)*
+## 5. Modeling Approach
 
 > ✏️ **Owner note.** Justify each model by a property of *our* data from Section 3 (skew, interactions, rule-like signals), not by general reputation.
 
@@ -244,7 +244,7 @@ Five-fold **stratified cross-validation** on the development set. **Randomized h
 
 ---
 
-## 6. Project Timeline *(1 page)*
+## 6. Project Timeline
 
 | Dates | Work | Owner |
 |---|---|---|
@@ -271,7 +271,7 @@ Five-fold **stratified cross-validation** on the development set. **Randomized h
 
 ---
 
-## Appendices *(not counted in the page limit)*
+## Appendices
 - A. Data dictionary (`docs/data_dictionary.md`)
 - B. EDA notebook export (`reports/milestone_1/eda_notebook.html`)
 - C. AI usage log (`docs/AI_USAGE.md`)
