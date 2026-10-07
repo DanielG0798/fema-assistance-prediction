@@ -131,41 +131,21 @@ A tuned, audited model would give FEMA an explainable signal at registration tha
 
 ## 3. Data Understanding *(3–4 pages · 7 pts)*
 
-> ✏️ **Owner note.** This is the highest-weighted section. The story runs in the order a grader checks: **what the data is → what we predict → what we must not use → what it looks like → how its parts relate → what's wrong with it → what that means for modeling.** Every subsection ends with an **ML takeaway**, the bridge into Section 4.
+> ✏️ **Owner note.** This is the highest-weighted section. The story runs in the order a grader checks: **what the data is → what we predict → what we must not use → what it looks like → how its parts relate → what's wrong with it → what that means for modeling.** Every subsection ends with an "overall" sentence that links the finding to a modeling decision, the bridge into Section 4.
 
 Full analysis: `notebooks/eda/01_initial_eda.ipynb` (exported as `reports/milestone_1/eda_notebook.html`). Column-by-column definitions: `docs/data_dictionary.md` (Appendix A).
 
-**At a glance**
+### 3.1 Dataset description and source
 
-| | |
-|---|---|
-| Observations (rows) | **194,482** applications, one household each |
-| Columns | **100** raw → **25** model features at Tier 1, **39** at Tier 2 (after cleaning) |
-| Target | `ihpEligible`, balanced **50.7% / 49.3%** |
-| Leakage columns removed | **43** |
-| Held out for review | **1** (`utilitiesOut`) |
-| Columns with >10% missing | **6** |
-| Strongest legitimate column | Cramér's V ≈ **0.46** (Tier 2: `habitabilityRepairsRequired`); strongest application-time column **0.32**. The leaky `ihpAmount` has V = **1.00** |
-
-### 3.1 Dataset description, source, and collection
-- **Source:** FEMA OpenFEMA, *Individuals and Households Program – Valid Registrations (v2)*, a public government dataset drawn from FEMA's National Emergency Management Information System (NEMIS).
-- **Collection method:** downloaded in October 2026 through the public OpenFEMA API (no key needed), filtered to disaster **DR-4673** and county **Lee (County)**, and sorted by application id so the paged download is stable. Our repository script is `src/data/fetch_fema.py`. FEMA updates the data, so counts can change.
-- **Size and grain:** 194,482 rows × 100 columns. Applications are dated 2022-09-27 to 2023-01-12. One row is one household's application (the **unit of observation**).
-- **Requirement check:** ✅ ≥ 10 features (25 at Tier 1, 39 at Tier 2, after cleaning) · ✅ ≥ 1,000 rows · ✅ both numeric and categorical variables.
-- **Caveats from FEMA:** raw operational data, "subject to a small percentage of human error"; only valid registrants are included.
-
-**ML takeaway:** the dataset is large enough for a three-way split and k-fold cross-validation without starving any fold, but it covers a single disaster, which limits **generalization**.
+Our data comes from FEMA's *Individuals and Households Program – Valid Registrations (v2)*, a public government dataset drawn from FEMA's National Emergency Management Information System (NEMIS). We downloaded the data from FEMA's public data site using our script `src/data/fetch_fema.py`, keeping it to Hurricane Ian (DR-4673) and to applicants in Lee County. The size of the data is 194,482 rows by 100 columns, with applications dated 2022-09-27 to 2023-01-12, and it has both numeric and categorical columns. One row is one household's application, which is our unit of observation. FEMA warns that this is raw data that has human error. It includes only valid registrations. Overall, the dataset is large enough for k-fold cross-validation with plenty of rows in every fold, but because it covers a single disaster, it limits generalization.
 
 ### 3.2 The target variable
-`ihpEligible` is True when the applicant received a housing and/or other-needs award. The classes are balanced: 98,648 eligible (50.7%) and 95,834 not (49.3%) (Figure 3.1).
 
-![Figure 3.1: Target balance](../figures/target_balance.png)
-*Figure 3.1. Class balance of `ihpEligible`.*
-
-**ML takeaway:** because the classes are balanced, plain **accuracy** is meaningful and no resampling (e.g. SMOTE) or class weighting is needed. We still **stratify** every split to keep the ratio fixed.
+Our target is `ihpEligible`, which is True when FEMA awarded the household housing and/or other-needs aid. Whether or not FEMA gives a household aid, yes or no, is the answer our model tries to predict. The classes are almost even, with 98,648 eligible (50.7%) and 95,834 not eligible (49.3%) (Figure D.1). Overall, about half got aid and half didn't, so the accuracy is a fair score and no SMOTE is required for this dataset. Each piece of the data we train and test on is stratified, so it keeps that same 50.7 / 49.3 mix.
 
 ### 3.3 Feature roles and data leakage (our key finding)
-We sorted all 100 columns into roles (the notebook's Section 4 has the same lists; the team repository's `src/utils/columns.py` is the single source of truth):
+
+We sorted all 100 columns into roles, recorded in `src/utils/columns.py`, which is the one file the whole team uses for this:
 
 | Role | Columns | Meaning |
 |---|---|---|
@@ -174,106 +154,72 @@ We sorted all 100 columns into roles (the notebook's Section 4 has the same list
 | Tier 2: later-stage | 14 | Learned after inspection or verification |
 | Leakage | 43 | Results of the decision; never used |
 | ID / constant | 15 | Identifiers, or identical on every row |
-| Under review | 1 | `utilitiesOut`: held out of both tiers until FEMA confirms when it is filled in |
+| Under review | 1 | `utilitiesOut`, held out of both tiers for now |
 
-*(Cleaning drops `damagedCity` and replaces `appliedDate` with `daysSinceLandfall`, so Tier 1 has 26 raw columns and 25 model inputs. Tier 2 has 39 model inputs.)*
+Tier 1 has 26 columns, but only 25 features, because `damagedCity` gets dropped and `appliedDate` turns into `daysSinceLandfall`. Tier 2 is Tier 1 with an additional 14 columns, resulting in 39 features total. We're not using `utilitiesOut` yet. It's almost never blank, but when it is, nearly everyone gets approved. That's suspicious and looks like leakage, as it is blank for only 2.7% of rows, but 99.9% of those rows were approved.
 
-**How we tested for leakage.** For each column we measured its link with eligibility using bias-corrected **Cramér's V** (0 = no link, 1 = the column determines eligibility). No predictive model is trained. Outcome columns are tied to the answer (`ihpAmount` V = 1.00, `onaEligible` and `onaAmount` 0.95, `ineligibleReason` 0.70), while the strongest legitimate column is `habitabilityRepairsRequired` at 0.46 (Figure 3.2).
+We checked each column one at a time to see how closely it matches the answer (Figure 3.1). The score is called Cramér's V, where 0 is no match and 1 is a perfect match. Three columns that are results of FEMA's decision score very high: `ihpAmount` 1.00, `onaEligible` 0.95, `ineligibleReason` 0.70. However, the best normal column only gets 0.46, so anything scoring near 1 is leakage.
 
-**A borderline case.** `currentLocation` contains values that are *consequences* of aid ("FEMA-provided unit" is 99% eligible, "new temporary rental" 87%), so we moved it from Tier 1 to Tier 2. The data cannot show the order in which these values were recorded, so the field's timing rests on FEMA's field definition and needs checking.
+The borderline case is the `currentLocation` variable. It includes things that happen because of aid ("FEMA-provided unit" is 99% eligible), so it was moved from Tier 1 to Tier 2 to keep the model honest. Overall, a good score only means something if the model uses information that would actually be available when the prediction is made, which is why we split the features into two tiers.
 
-![Figure 3.2: Link with eligibility (leakage check)](../figures/leakage_association.png)
-*Figure 3.2. Each column's link with eligibility (Cramér's V). Leakage columns sit at the top.*
-
-**ML takeaway:** a high score is only meaningful if the features would exist at **prediction time**. The Tier 1 / Tier 2 split turns that rule into two concrete, testable feature sets.
+![Figure 3.1: Link with eligibility (leakage check)](../figures/leakage_association.png)
+*Figure 3.1. Each column's link with eligibility (Cramér's V). Leakage columns sit at the top.*
 
 ### 3.4 Summary statistics and distributions
-Applicants are mostly older, small households, and homeowners: 57% are 50 or older, most households have one or two people, 64% own their home, and 77% registered online or through the mobile app (Figure 3.3).
 
-- **Skewed numeric features:** damage measures such as `rpfvl` (FEMA-verified real-property loss) are zero for 83% of applicants and heavily **right-skewed** for the rest (median non-zero $12,375; 95th percentile $203,785).
-- **High-cardinality categoricals:** ZIP code (about 560 values) and census block group (about 3,000 values).
+Most applicants were older people in small households who owned their homes and applied online: 57% are 50 or older, most households have one or two people, 64% own their home, and 77% registered online or through the mobile app (Figure D.2). The damage numbers are skewed. `rpfvl`, the real-property loss FEMA verified, is $0 for about 83% of applicants, and the other 17% are spread out with some very large amounts. ZIP code has high cardinality, with about 560 different values, which is too many to give each one its own column. Overall, we log transform the damage columns to shrink the skew and add a yes/no "has damage" flag, and we frequency-encode ZIP codes instead of giving each ZIP its own column.
 
-![Figure 3.3: Applicant profile](../figures/applicant_profile.png)
-*Figure 3.3. Age, household size, ownership, and registration method.*
+### 3.5 Relationships with the target
 
-**ML takeaway:** skew calls for a **log transform** plus "has damage" flags. High cardinality rules out naive one-hot encoding, so we use **frequency or target encoding** instead (Section 4.2).
+Some features change the chance of approval a lot (Figure 3.2). If the home isn't the applicant's primary residence, they are basically never approved (about 0.4%). Reporting emergency needs makes approval more likely (66% vs. 34%). Having homeowners insurance makes it less likely (47% vs. 55%), since FEMA doesn't pay for damage that insurance already covers. Higher income also lowers the odds, from 61% under $15k to 45% above $175k, although the $0-income group is the lowest at 42%. At Tier 2, applicants whose inspection was completed were approved 73% of the time versus 38% otherwise. Approval also varies by ZIP code, and it falls from 65% for people who applied in the first week after landfall to 19% by week 5 (Figures D.3 and D.4). Overall, several of the strongest signals work more like yes/no rules than gradual trends, so tree-based models such as decision trees and random forests should fit this data well. Income stays an unordered category, because the $0 group breaks the usual "more income, less aid" pattern.
 
-### 3.5 Relationships with the target (bivariate analysis)
-Eligibility rate by feature (Figure 3.4):
-- **Primary residence** acts almost like a hard rule: non-primary homes are about 0.4% eligible.
-- **Emergency needs reported:** 34% eligible if not reported, 66% if reported.
-- **Homeowners insurance** lowers eligibility (47% vs 55% without), consistent with FEMA covering what insurance does not. Flood insurance barely matters.
-- **Income:** eligibility falls as reported income rises (61% under $15k to 45% above $175k). The "$0" group is the exception and is lowest (42%).
-- **Owner vs renter** makes almost no difference (51% vs 50%).
-- **Inspection (Tier 2):** applicants whose inspection was completed are 73% eligible vs 38% otherwise; unverified occupancy is under 1% eligible.
-- **Geography and timing:** eligibility ranges from 43% to 62% across the 22 ZIP codes with 3,000+ applicants (Figure 3.5), and falls from 65% for applications in the first week after landfall to 19% in week 5 (Figure 3.6).
-
-![Figure 3.4: Eligibility by feature](../figures/eligibility_by_feature.png)
-*Figure 3.4. Eligibility rate within each category of key features.*
-
-![Figure 3.5: Eligibility by ZIP](../figures/eligibility_by_zip.png)
-*Figure 3.5. Eligibility across the 22 ZIP codes with 3,000+ applicants.*
-
-![Figure 3.6: Eligibility by week](../figures/eligibility_by_week.png)
-*Figure 3.6. Eligibility by week of application.*
-
-**ML takeaway:** several strong signals are rule-like and non-linear (the income "$0" break, the residence cutoff), which favors **tree-based models**. The income bracket must stay an **unordered category**.
+![Figure 3.2: Eligibility by feature](../figures/eligibility_by_feature.png)
+*Figure 3.2. Eligibility rate within each category of key features.*
 
 ### 3.6 Missing values
-Nineteen columns have missing values, eleven of them candidate features (Figure 3.7). Six are more than 10% missing:
 
-| Column | Missing | Likely reason it is blank |
+Nineteen columns have missing values. Eleven of them are columns we could use as features, and six are more than 10% missing (Figure D.7):
+
+| Column | Missing | Likely reason it's blank |
 |---|---|---|
-| `renterDamageLevel` | 96% | FEMA-determined damage level for *renter* dwellings only |
-| `highWaterLocation` | 88% | Only applies where there was a high-water (flood) mark |
-| `shelterNeed` | 82% | Almost always True when present, so blank ≈ need not reported |
-| `habitabilityRepairsRequired` | 73% | Not filled in for most applicants; *whether* it was filled in is itself a signal [TEAM: confirm cause] |
-| `foodNeed` | 52% | Almost always True when present, so blank ≈ need not reported |
+| `renterDamageLevel` | 96% | Only applies to renters |
+| `highWaterLocation` | 88% | Only applies where there was a flood mark |
+| `shelterNeed` | 82% | Almost always "yes" when filled in, so blank ≈ not reported |
+| `habitabilityRepairsRequired` | 73% | Not filled in for most applicants (reason not confirmed) |
+| `foodNeed` | 52% | Almost always "yes" when filled in, so blank ≈ not reported |
 | `selfAssessmentInformation` | 15% | Applicant's own damage rating, left blank by some |
 
-Several of these blanks are **structural** (the question does not apply) or **informative** (a blank means "not reported"), so the data is *not* missing completely at random.
-
-Blanks also carry signal. For `renterDamageLevel`, `highWaterLocation`, and `habitabilityRepairsRequired`, applicants with the field blank are 37–49% eligible, versus 88–92% when it is filled. `utilitiesOut` is blank for only 2.7% of rows, but those rows are **99.9% eligible** (versus 49% when filled). That is a leakage warning, so the field is held out of both tiers until FEMA confirms when it is filled in.
-
-![Figure 3.7: Missing values](../figures/missing_values.png)
-*Figure 3.7. Share of missing values per column.*
-
-**ML takeaway:** filling blanks with a plain mean would erase a real signal. We add **missing-value indicator** features and impute inside the pipeline, fit on training data only.
+Many of these blanks mean something, so the data is not missing completely at random. Overall, filling the blanks with an average would throw away that information, so we add a yes/no "was this blank?" column for these features, and fill any remaining gaps inside the pipeline using only the training data.
 
 ### 3.7 Correlation analysis
-No single numeric feature has a strong **linear** relationship with eligibility; the strongest correlation is about 0.36 (Figure 3.8). Eight feature pairs have |r| above 0.7 (Figure 3.9), including inspection issued vs completed (1.00), real-property loss vs flood-damage amount (0.97), and home damage vs reported damage (0.83).
 
-![Figure 3.8: Correlation with target](../figures/correlation_with_target.png)
-*Figure 3.8. Correlation of each numeric feature with the target.*
-
-![Figure 3.9: Correlation matrix](../figures/correlation_matrix.png)
-*Figure 3.9. Feature-to-feature correlations.*
-
-**ML takeaway:** weak individual correlations, and no legitimate column above V = 0.46, suggest the signal comes from **combinations of features**, to be tested in Milestone 2. The near-duplicate pairs are **multicollinearity**: we drop one of each pair for linear models, while trees are largely unaffected.
+No single numeric feature has a strong straight-line relationship with approval. The strongest correlation is only about 0.36 (Figure D.5). Not a single column predicts the answer confidently alone, so the model will probably need several columns working together, which will be tested in Milestone 2. Some features are near-copies of each other (Figure D.6): inspection issued vs. inspection completed (1.00), verified home damage vs. flood damage amount (0.97), and reported damage vs. home damage (0.83). Overall, the near-copy pairs are multicollinearity, so we drop one from each pair for linear models like logistic regression, while tree-based models can keep both.
 
 ### 3.8 Data quality assessment
-| Check | Result | Decision |
-|---|---|---|
-| Constant columns | 14 columns have one value on every row (expected: one disaster, one county) | Drop |
-| Duplicates | 407 rows (0.21%) identical on all non-ID columns; probably different households with the same answers | Keep |
-| Location errors | 6,357 rows (3.3%) have a census block outside Lee County (2,707 are `NO_INTERSECT`; most others are neighboring counties); only 17 rows have a non-Florida ZIP | Keep; `NO_INTERSECT` as its own category |
-| Hand-typed city names | Many spellings (e.g. `FT MYERS`, `FT MYERS BCH`) | Drop the city column |
-| Implausible values | A water depth of 960 inches (80 ft) | Cap (outlier treatment) |
-| Dates | Only 2 applications dated before the disaster declaration | Keep |
 
-**ML takeaway:** quality is good overall. Every issue has a specific, documented fix in Section 4.1.
+| Check | What we found | What we do |
+|---|---|---|
+| Constant columns | 14 columns have the same value on every row (one disaster, one county) | Drop them |
+| Duplicates | 407 rows (0.21%) match on every non-ID column, likely different households with the same answers | Keep them |
+| Location errors | 6,357 rows (3.3%) have a census block outside Lee County (2,707 are `NO_INTERSECT`); only 17 have a non-Florida ZIP | Keep them; treat `NO_INTERSECT` as its own category |
+| Hand-typed city names | Many spellings (`FT MYERS`, `FT MYERS BCH`) | Drop the city column |
+| Impossible values | A flood depth of 960 inches (80 feet) | Cap it at a reasonable max |
+| Dates | Only 2 applications dated before the disaster was declared | Keep them |
+
+Overall, the data quality is good, and every problem has a specific fix that carries into the Data Preparation Plan (Section 4).
 
 ### 3.9 Challenges and limitations
-| Challenge | Why it matters for ML |
+
+Leakage, skew, meaningful blanks, and near-copy features are covered above. The remaining limits are:
+
+| Challenge | Why it matters for the model |
 |---|---|
-| Data leakage | Inflated, meaningless scores if not controlled |
-| One disaster, one county | Limited generalization to other storms |
-| Valid registrants only | Selection bias |
-| Label bundles many denial reasons | Label noise; one "no" can mean very different things |
-| Heavy skew, structural missingness | Requires transforms and missing indicators |
-| High-cardinality geography | Encoding choices can overfit if not done inside CV folds |
-| Near-duplicate features | Multicollinearity for linear models |
-| Outcomes partly follow FEMA rules | A high score is not proof the model understands *need* |
+| One storm, one county | A model trained here may not work for other disasters (generalization) |
+| Valid registrations only | Selection bias: we can't say anything about applications that never made it in |
+| "Not eligible" covers many reasons | Label noise: one "no" can mean very different things |
+| Approval partly follows FEMA's own rules | A high score doesn't prove the model understands who actually needs help |
+
+Overall, none of these issues bring the project to a halt, but it does affect how we build/score the model. Sections 4 and 5 explain how we deal with them.
 
 ---
 
@@ -392,6 +338,30 @@ Five-fold **stratified cross-validation** on the development set. **Randomized h
 - B. EDA notebook export (`reports/milestone_1/eda_notebook.html`)
 - C. AI usage log (`docs/AI_USAGE.md`)
 - D. Additional figures (`reports/figures/`)
+
+### Appendix D. Additional figures for Section 3
+
+![Figure D.1: Target balance](../figures/target_balance.png)
+*Figure D.1. Class balance of `ihpEligible`.*
+
+![Figure D.2: Applicant profile](../figures/applicant_profile.png)
+*Figure D.2. Age, household size, ownership, and registration method.*
+
+![Figure D.3: Eligibility by ZIP](../figures/eligibility_by_zip.png)
+*Figure D.3. Eligibility across the 22 largest ZIP codes.*
+
+![Figure D.4: Eligibility by week](../figures/eligibility_by_week.png)
+*Figure D.4. Eligibility by week of application.*
+
+![Figure D.5: Correlation with target](../figures/correlation_with_target.png)
+*Figure D.5. Correlation of each numeric feature with the target.*
+
+![Figure D.6: Correlation matrix](../figures/correlation_matrix.png)
+*Figure D.6. Feature-to-feature correlations.*
+
+![Figure D.7: Missing values](../figures/missing_values.png)
+*Figure D.7. Share of missing values per column.*
+
 
 ## References
 FEMA. *OpenFEMA Dataset: Individuals and Households Program – Valid Registrations v2.* https://www.fema.gov/openfema-data-page/individuals-and-households-program-valid-registrations-v2
