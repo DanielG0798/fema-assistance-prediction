@@ -18,3 +18,9 @@ Thumbs.db
 
 # Charts written by the EDA notebook when it is run
 notebooks/eda/figures/
+
+# Local-only files (kept out of the repo)
+CLAUDE.md
+docs/milestone_2_plan.md
+reports/milestone_1/Milestone1_Report.docx
+reports/milestone_1/tables_3_4_to_copy.docx
