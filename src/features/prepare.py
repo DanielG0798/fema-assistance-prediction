@@ -73,8 +73,9 @@ def clean(raw: pd.DataFrame, tier: str = "application") -> pd.DataFrame:
 
     # Ordered ranges -> numbers
     df["applicantAge"] = df["applicantAge"].map(AGE_ORDER).astype("int8")
+    # astype(str) first: the CSV reads columns with no ">5" value as numbers, not text
     for c in COUNT_COLS:
-        df[c] = df[c].map(COUNT_ORDER).astype("int8")
+        df[c] = df[c].astype(str).map(COUNT_ORDER).astype("int8")
 
     # Yes/No columns -> 0/1, keeping "unknown" as a real missing value (not a fake 0)
     for c in df.columns:

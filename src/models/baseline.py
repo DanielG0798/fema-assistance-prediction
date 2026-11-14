@@ -17,7 +17,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardScaler
 
 from src.features.prepare import load_model_data, split_data
 from src.utils.columns import TARGET
@@ -41,23 +41,14 @@ def add_frequency_features(train: pd.DataFrame, *others: pd.DataFrame):
     return frames
 
 
-def run_baselines(tier: str = "application") -> pd.DataFrame:
-    """Train a logistic regression and a gradient-boosting model; score on validation."""
-    train, val, _test = split_data(load_model_data(tier))
-    train, val = add_frequency_features(train, val)
-    X_tr, y_tr = train.drop(columns=TARGET), train[TARGET]
-    X_va, y_va = val.drop(columns=TARGET), val[TARGET]
-
-    results = []
-
+def make_models(X: pd.DataFrame) -> dict:
+    """The baseline models, keyed by the short name used in prediction columns (prob_<name>)."""
     # 1) Gradient boosting: handles missing values, categories, and interactions on its own.
     gb = HistGradientBoostingClassifier(categorical_features="from_dtype", max_iter=200, random_state=0)
-    gb.fit(X_tr, y_tr)
-    results.append(_score("Gradient boosting", y_va, gb.predict_proba(X_va)[:, 1]))
 
     # 2) Logistic regression: simple, interpretable; needs imputing, scaling, one-hot encoding.
-    numeric = [c for c in X_tr.columns if str(X_tr[c].dtype) in ("int8", "int16", "Int8", "float64")]
-    categorical = [c for c in X_tr.columns if str(X_tr[c].dtype) == "category"]
+    numeric = [c for c in X.columns if str(X[c].dtype) in ("int8", "int16", "Int8", "float64")]
+    categorical = [c for c in X.columns if str(X[c].dtype) == "category"]
 
     def as_plain(X):
         X = X.copy()
@@ -69,9 +60,24 @@ def run_baselines(tier: str = "application") -> pd.DataFrame:
         (make_pipeline(SimpleImputer(strategy="median", add_indicator=True), StandardScaler()), numeric),
         (OneHotEncoder(handle_unknown="ignore"), categorical),
     )
-    lr = make_pipeline(prep, LogisticRegression(max_iter=1000))
-    lr.fit(as_plain(X_tr), y_tr)
-    results.append(_score("Logistic regression", y_va, lr.predict_proba(as_plain(X_va))[:, 1]))
+    lr = make_pipeline(FunctionTransformer(as_plain), prep, LogisticRegression(max_iter=1000))
+    return {"gboost": gb, "logreg": lr}
+
+
+MODEL_LABELS = {"gboost": "Gradient boosting", "logreg": "Logistic regression"}
+
+
+def run_baselines(tier: str = "application") -> pd.DataFrame:
+    """Train a logistic regression and a gradient-boosting model; score on validation."""
+    train, val, _test = split_data(load_model_data(tier))
+    train, val = add_frequency_features(train, val)
+    X_tr, y_tr = train.drop(columns=TARGET), train[TARGET]
+    X_va, y_va = val.drop(columns=TARGET), val[TARGET]
+
+    results = []
+    for name, model in make_models(X_tr).items():
+        model.fit(X_tr, y_tr)
+        results.append(_score(MODEL_LABELS[name], y_va, model.predict_proba(X_va)[:, 1]))
 
     majority = max(y_va.mean(), 1 - y_va.mean())
     results.append({"model": "Always guess the majority class", "ROC-AUC": 0.5, "accuracy": majority, "F1": 0.0})
