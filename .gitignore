@@ -24,3 +24,6 @@ CLAUDE.md
 docs/milestone_2_plan.md
 reports/milestone_1/Milestone1_Report.docx
 reports/milestone_1/tables_3_4_to_copy.docx
+
+# Charts written by the modeling notebook when it is run
+notebooks/modeling/figures/

@@ -81,7 +81,9 @@ def clean(raw: pd.DataFrame, tier: str = "application") -> pd.DataFrame:
     for c in df.columns:
         if c == TARGET:
             continue
-        if df[c].map(type).isin([bool, type(None)]).all():
+        # dropna() first: blanks in the CSV are float NaN, not None
+        values = df[c].dropna()
+        if len(values) and values.map(type).eq(bool).all():
             df[c] = df[c].map({True: 1, False: 0}).astype("Int8")
 
     # Codes with no order -> categories
